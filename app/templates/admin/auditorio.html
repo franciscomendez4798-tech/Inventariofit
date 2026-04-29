@@ -1,0 +1,141 @@
+{% extends 'base.html' %}
+
+{% block title %}Auditorio Interactivo FIT{% endblock %}
+
+{% block head_extra %}
+<!-- FullCalendar 6 -->
+<link  href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.css" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.js"></script>
+<style>
+  .fc-event { cursor: pointer; font-size: .82rem; }
+  .legend-dot { width:14px; height:14px; border-radius:50%; display:inline-block; }
+  .card-proxima { border-left: 4px solid #0d6efd; }
+  .card-proxima.externo-sin-pago { border-left-color: #ffc107; }
+  .badge-tipo-docente  { background:#e7f1ff; color:#0d6efd; }
+  .badge-tipo-externo  { background:#fff3cd; color:#856404; }
+
+  /* Quitar líneas debajo del nombre del día y del número de día */
+  .fc-col-header-cell { border-bottom: none !important; }
+  .fc-daygrid-day-top { border-bottom: none !important; }
+  .fc-daygrid-day-number { text-decoration: none !important; }
+  .fc .fc-daygrid-body-natural .fc-daygrid-day-events { margin-bottom: 0; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center justify-content-between mb-4 flex-wrap gap-2">
+  <div>
+    <h2 class="fw-bold mb-0"><i class="bi bi-camera-video-fill me-2 text-primary"></i>Auditorio Interactivo FIT</h2>
+    <small class="text-muted">Gestión de reservas y calendarización</small>
+  </div>
+  <div class="d-flex gap-2">
+    <a href="{{ url_for('admin.auditorio_historial') }}" class="btn btn-outline-secondary btn-sm">
+      <i class="bi bi-clock-history me-1"></i>Historial
+    </a>
+    <a href="{{ url_for('admin.auditorio_nueva') }}" class="btn btn-primary btn-sm">
+      <i class="bi bi-plus-lg me-1"></i>Nueva Reserva
+    </a>
+  </div>
+</div>
+
+<div class="row g-4">
+  <!-- Calendario -->
+  <div class="col-lg-8">
+    <div class="card shadow-sm">
+      <div class="card-body">
+        <!-- Leyenda -->
+        <div class="d-flex flex-wrap gap-3 mb-3 small text-muted">
+          <span><span class="legend-dot me-1" style="background:#0d6efd"></span>Reservado</span>
+          <span><span class="legend-dot me-1" style="background:#ffc107"></span>Externo sin pago</span>
+          <span><span class="legend-dot me-1" style="background:#198754"></span>En uso</span>
+          <span><span class="legend-dot me-1" style="background:#6c757d"></span>Completado</span>
+        </div>
+        <div id="calendario"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Panel derecho: Próximas reservas -->
+  <div class="col-lg-4">
+    <div class="card shadow-sm h-100">
+      <div class="card-header bg-white fw-semibold">
+        <i class="bi bi-list-check me-1 text-primary"></i>Próximas Reservas
+      </div>
+      <div class="card-body p-0" style="overflow-y:auto; max-height:520px;">
+        {% if proximas %}
+          <ul class="list-group list-group-flush">
+          {% for r in proximas %}
+            <li class="list-group-item p-3 card-proxima {% if r.es_externo and not r.pago_verificado %}externo-sin-pago{% endif %}">
+              <div class="d-flex justify-content-between align-items-start">
+                <div>
+                  <div class="fw-semibold">{{ r.nombre_evento }}</div>
+                  <small class="text-muted">
+                    <i class="bi bi-person me-1"></i>{{ r.nombre }}
+                    <span class="badge badge-tipo-{{ r.tipo_usuario }} ms-1 rounded-pill px-2">{{ r.tipo_usuario|capitalize }}</span>
+                  </small><br>
+                  <small class="text-muted">
+                    <i class="bi bi-calendar3 me-1"></i>
+                    {{ r.fecha_inicio.strftime('%d/%m/%Y') }}
+                    {{ r.fecha_inicio.strftime('%H:%M') }} – {{ r.fecha_fin.strftime('%H:%M') }}
+                    <span class="text-secondary">({{ r.duracion_horas }}h)</span>
+                  </small>
+                  {% if r.es_externo %}
+                    <br>
+                    {% if r.pago_verificado %}
+                      <small class="text-success"><i class="bi bi-check-circle-fill me-1"></i>Pago verificado</small>
+                    {% else %}
+                      <small class="text-warning"><i class="bi bi-exclamation-circle-fill me-1"></i>Pago pendiente</small>
+                    {% endif %}
+                  {% endif %}
+                </div>
+                <a href="{{ url_for('admin.auditorio_editar', reserva_id=r.id) }}"
+                   class="btn btn-outline-primary btn-sm ms-2" title="Ver / Editar">
+                  <i class="bi bi-pencil"></i>
+                </a>
+              </div>
+            </li>
+          {% endfor %}
+          </ul>
+        {% else %}
+          <div class="text-center text-muted py-5">
+            <i class="bi bi-calendar-x fs-1 d-block mb-2"></i>
+            Sin reservas próximas
+          </div>
+        {% endif %}
+      </div>
+      <div class="card-footer bg-white text-center">
+        <a href="{{ url_for('admin.auditorio_historial') }}" class="btn btn-link btn-sm text-decoration-none">
+          Ver historial completo <i class="bi bi-arrow-right"></i>
+        </a>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  const calEl = document.getElementById('calendario');
+  const cal = new FullCalendar.Calendar(calEl, {
+    locale: 'es',
+    initialView: 'dayGridMonth',
+    headerToolbar: {
+      left:   'prev,next today',
+      center: 'title',
+      right:  'dayGridMonth,timeGridWeek,listWeek'
+    },
+    buttonText: { today:'Hoy', month:'Mes', week:'Semana', list:'Lista' },
+    events: '{{ url_for("admin.auditorio_eventos_json") }}',
+    eventClick: function(info) {
+      info.jsEvent.preventDefault();
+      if (info.event.url) window.location.href = info.event.url;
+    },
+    eventTimeFormat: { hour:'2-digit', minute:'2-digit', hour12:false },
+    height: 'auto',
+    nowIndicator: true,
+  });
+  cal.render();
+});
+</script>
+{% endblock %}

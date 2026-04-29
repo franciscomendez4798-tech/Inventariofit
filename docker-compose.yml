@@ -1,0 +1,112 @@
+# ================================================================
+#  docker-compose.yml — Orquestación completa
+#  Servicios: web (Flask/Gunicorn) + db (MySQL) + nginx (proxy)
+#
+#  Uso rápido (SQLite, sin MySQL):
+#    docker compose up web
+#
+#  Uso completo (MySQL + Nginx):
+#    docker compose --profile full up -d
+# ================================================================
+
+version: "3.9"
+
+services:
+
+  # ── Aplicación Flask ──────────────────────────────────────────
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: runtime
+    container_name: inventario_web
+    restart: unless-stopped
+    environment:
+      FLASK_ENV:    ${FLASK_ENV:-production}
+      SECRET_KEY:   ${SECRET_KEY:-cambia-este-secret-key}
+      DATABASE_URL: ${DATABASE_URL:-sqlite:////app/instance/inventario.db}
+      PORT:         "5000"
+    volumes:
+      # Persistir la BD SQLite (solo si no usas MySQL)
+      - sqlite_data:/app/instance
+    ports:
+      - "5000:5000"
+    depends_on:
+      db:
+        condition: service_healthy
+    profiles:
+      - full
+    networks:
+      - inventario_net
+
+  # Versión simple sin MySQL (solo web + SQLite)
+  web-simple:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: runtime
+    container_name: inventario_simple
+    restart: unless-stopped
+    environment:
+      FLASK_ENV:    development
+      SECRET_KEY:   ${SECRET_KEY:-dev-key-local}
+      DATABASE_URL: sqlite:////app/instance/inventario.db
+    volumes:
+      - sqlite_data:/app/instance
+    ports:
+      - "5000:5000"
+    networks:
+      - inventario_net
+
+  # ── MySQL (opcional, para producción real) ────────────────────
+  db:
+    image: mysql:8.0
+    container_name: inventario_db
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-rootpass}
+      MYSQL_DATABASE:      inventario_db
+      MYSQL_USER:          ${MYSQL_USER:-inv_user}
+      MYSQL_PASSWORD:      ${MYSQL_PASSWORD:-inv_pass}
+    volumes:
+      - mysql_data:/var/lib/mysql
+      # El schema SQL se ejecuta automáticamente al primer inicio
+      - ./inventario_schema.sql:/docker-entrypoint-initdb.d/01_schema.sql:ro
+    ports:
+      - "3306:3306"
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost",
+             "-u", "root", "-p${MYSQL_ROOT_PASSWORD:-rootpass}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    profiles:
+      - full
+    networks:
+      - inventario_net
+
+  # ── Nginx (reverse proxy + archivos estáticos) ────────────────
+  nginx:
+    image: nginx:1.25-alpine
+    container_name: inventario_nginx
+    restart: unless-stopped
+    volumes:
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./app/static:/var/www/static:ro
+    ports:
+      - "80:80"
+    depends_on:
+      - web
+    profiles:
+      - full
+    networks:
+      - inventario_net
+
+# ── Volúmenes y red ───────────────────────────────────────────────
+volumes:
+  sqlite_data:
+  mysql_data:
+
+networks:
+  inventario_net:
+    driver: bridge

@@ -1,0 +1,117 @@
+{# templates/solicitante/requisiciones.html #}
+{% extends "base.html" %}
+{% block title %}Requisiciones{% endblock %}
+
+{% block breadcrumb %}<strong>Requisiciones</strong> — Formatos de pedido{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-start mb-1 flex-wrap gap-2">
+  <div>
+    <h1 class="page-title">Requisiciones</h1>
+    <p class="page-subtitle">
+      Historial de formatos de pedido de almacén. Descarga cada requisición en .xlsx o todas en PDF.
+    </p>
+  </div>
+  {% if pedidos %}
+  <a href="{{ url_for('solicitante.descargar_requisiciones_pdf') }}" class="btn btn-primary">
+    <i class="bi bi-file-earmark-pdf me-1"></i>Descargar todo en PDF
+  </a>
+  {% endif %}
+</div>
+
+{% if not pedidos %}
+<div class="text-center py-5 text-muted">
+  <i class="bi bi-file-earmark-text fs-1 d-block mb-2"></i>
+  Aún no tienes requisiciones.
+  <a href="{{ url_for('solicitante.catalogo') }}">Haz un pedido</a> para generar tu primer formato.
+</div>
+{% else %}
+
+<div class="row g-3">
+  {% for p in pedidos %}
+  <div class="col-12">
+    <div class="card">
+      <div class="card-body">
+        <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-3">
+          <div>
+            <span class="fw-bold font-monospace">{{ p.folio }}</span>
+            <span class="text-muted small ms-2">
+              {{ p.fecha_solicitud.strftime('%d/%m/%Y %H:%M') }}
+            </span>
+          </div>
+          <span class="badge-estado estado-{{ p.estado }}">{{ p.estado.replace('_',' ') }}</span>
+        </div>
+
+        <!-- Materiales del pedido -->
+        <div class="table-responsive mb-3">
+          <table class="table table-sm mb-0" style="font-size:.85rem">
+            <thead>
+              <tr>
+                <th>Material</th>
+                <th class="text-center">Solicitado</th>
+                {% if p.estado in ('aprobado', 'modificado', 'entregado') %}
+                <th class="text-center">Aprobado</th>
+                {% endif %}
+              </tr>
+            </thead>
+            <tbody>
+              {% for d in p.detalles %}
+              <tr>
+                <td>{{ d.material.nombre }}
+                  <small class="text-muted">/ {{ d.material.unidad_medida }}</small>
+                </td>
+                <td class="text-center">{{ d.cantidad_solicitada }}</td>
+                {% if p.estado in ('aprobado', 'modificado', 'entregado') %}
+                <td class="text-center">
+                  {% if d.cantidad_aprobada is not none %}
+                  <span class="{% if d.cantidad_aprobada < d.cantidad_solicitada %}text-warning fw-bold{% else %}text-success fw-bold{% endif %}">
+                    {{ d.cantidad_aprobada }}
+                  </span>
+                  {% else %}
+                  <span class="text-muted">—</span>
+                  {% endif %}
+                </td>
+                {% endif %}
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Botones de descarga -->
+        <div class="d-flex gap-2 flex-wrap">
+          <!-- Formato de Pedido (siempre disponible) -->
+          {% if formatos[p.id].tiene_pedido %}
+          <a href="{{ url_for('solicitante.descargar_requisicion_xlsx', pedido_id=p.id) }}"
+             class="btn btn-sm btn-outline-primary">
+            <i class="bi bi-file-earmark-spreadsheet me-1"></i>
+            Pedido de Almacén (.xlsx)
+          </a>
+          {% else %}
+          <span class="btn btn-sm btn-outline-secondary disabled">
+            <i class="bi bi-file-earmark-spreadsheet me-1"></i>
+            Formato no generado
+          </span>
+          {% endif %}
+
+          <!-- Formato de Salida (solo si entregado/aprobado) -->
+          {% if formatos[p.id].tiene_salida %}
+          <a href="{{ url_for('solicitante.descargar_salida_xlsx', pedido_id=p.id) }}"
+             class="btn btn-sm btn-outline-success">
+            <i class="bi bi-file-earmark-check me-1"></i>
+            Salida de Almacén (.xlsx)
+          </a>
+          {% elif p.estado in ('aprobado', 'modificado', 'entregado') %}
+          <span class="btn btn-sm btn-outline-secondary disabled" title="Pendiente de generación">
+            <i class="bi bi-hourglass me-1"></i>Salida pendiente
+          </span>
+          {% endif %}
+        </div>
+
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+{% endblock %}

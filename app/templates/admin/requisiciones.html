@@ -1,0 +1,96 @@
+{# templates/admin/requisiciones.html #}
+{% extends "base.html" %}
+{% block title %}Requisiciones — Salida de Almacén{% endblock %}
+
+{% block breadcrumb %}<strong>Requisiciones</strong> — Salida de Almacén{% endblock %}
+
+{% block topbar_actions %}
+{% if pedidos %}
+<a href="{{ url_for('admin.descargar_salidas_pdf', departamento=filtro_depto) }}" 
+   class="btn btn-sm btn-primary">
+  <i class="bi bi-file-earmark-pdf me-1"></i>Descargar PDF
+</a>
+{% endif %}
+{% endblock %}
+
+{% block content %}
+<h1 class="page-title">Salida de Almacén</h1>
+<p class="page-subtitle">Formatos de salida generados para los pedidos aprobados y entregados.</p>
+
+<!-- Filtro por departamento -->
+<div class="mb-4">
+  <form method="GET" class="d-flex gap-2 align-items-center flex-wrap">
+    <select name="departamento" class="form-select" style="max-width:280px"
+            onchange="this.form.submit()">
+      <option value="">Todos los departamentos</option>
+      {% for d in departamentos %}
+      <option value="{{ d.id }}" {{ 'selected' if filtro_depto|string == d.id|string }}>
+        {{ d.nombre }}
+      </option>
+      {% endfor %}
+    </select>
+    {% if filtro_depto %}
+    <a href="{{ url_for('admin.requisiciones') }}" class="btn btn-sm btn-outline-secondary">
+      <i class="bi bi-x-lg me-1"></i>Limpiar
+    </a>
+    {% endif %}
+    <span class="text-muted small ms-2">
+      {{ pedidos|length }} formato{{ 's' if pedidos|length != 1 }}
+    </span>
+  </form>
+</div>
+
+{% if not pedidos %}
+<div class="text-center py-5 text-muted">
+  <i class="bi bi-file-earmark-text fs-1 d-block mb-2"></i>
+  No hay formatos de salida de almacén.
+</div>
+{% else %}
+<div class="table-responsive">
+  <table class="table table-sm">
+    <thead>
+      <tr>
+        <th>Folio</th>
+        <th>Departamento</th>
+        <th>Solicitante</th>
+        <th class="text-center">Artículos</th>
+        <th>Fecha resolución</th>
+        <th>Estado</th>
+        <th>Formato</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for p in pedidos %}
+      <tr>
+        <td>
+          <a href="{{ url_for('admin.revisar_pedido', pedido_id=p.id) }}"
+             class="fw-bold font-monospace small text-decoration-none">
+            {{ p.folio }}
+          </a>
+        </td>
+        <td class="small">{{ p.departamento.nombre if p.departamento else '—' }}</td>
+        <td class="small">{{ p.solicitante.nombre_completo.split()[0] if p.solicitante else '—' }}</td>
+        <td class="text-center small">{{ p.detalles|length }}</td>
+        <td class="small text-muted">
+          {{ p.fecha_resolucion.strftime('%d/%m/%Y %H:%M') if p.fecha_resolucion else '—' }}
+        </td>
+        <td>
+          <span class="badge-estado estado-{{ p.estado }}">{{ p.estado.replace('_', ' ') }}</span>
+        </td>
+        <td>
+          {% if formatos[p.id] %}
+          <a href="{{ url_for('admin.descargar_salida_admin_xlsx', pedido_id=p.id) }}"
+             class="btn btn-sm btn-outline-success">
+            <i class="bi bi-download me-1"></i>.xlsx
+          </a>
+          {% else %}
+          <span class="text-muted small"><i class="bi bi-hourglass me-1"></i>Pendiente</span>
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endif %}
+{% endblock %}

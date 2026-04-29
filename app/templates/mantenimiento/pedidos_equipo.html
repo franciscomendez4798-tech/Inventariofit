@@ -1,0 +1,177 @@
+{% extends 'base.html' %}
+{% block title %}Pedidos de Equipo — Mantenimiento{% endblock %}
+{% block breadcrumb %}
+  <span class="text-muted">Mantenimiento</span>
+  <span class="mx-2 text-muted">&rsaquo;</span>
+  <strong>Pedidos de Equipo</strong>
+{% endblock %}
+
+{% block topbar_actions %}
+<a href="{{ url_for('mantenimiento.pedido_equipo_form') }}"
+   class="btn btn-primary d-flex align-items-center gap-2 px-3">
+  <i class="bi bi-plus-lg"></i> Nuevo pedido de equipo
+</a>
+{% endblock %}
+
+{% block content %}
+<div class="animate-fade-in">
+
+  <div class="maintenance-header mb-4">
+    <h2 class="h3 fw-bold text-dark mb-1">Pedidos de Equipo al Administrador</h2>
+    <p class="text-muted">Solicitudes formales de equipo y material del personal de mantenimiento.</p>
+  </div>
+
+  {# ── Filtros ────────────────────────────────────────────────────────────── #}
+  <form method="get" class="row g-2 mb-4 align-items-end">
+    <div class="col-md-4">
+      <label class="form-label small text-muted fw-semibold">Buscar trabajador</label>
+      <div class="input-group">
+        <span class="input-group-text bg-white"><i class="bi bi-search text-muted"></i></span>
+        <input type="text" name="q" value="{{ q }}" class="form-control border-start-0"
+               placeholder="Nombre del técnico…">
+      </div>
+    </div>
+    <div class="col-md-3">
+      <label class="form-label small text-muted fw-semibold">Estado</label>
+      <select name="estado" class="form-select">
+        <option value="">Todos</option>
+        {% for e in ['pendiente','aprobado','rechazado','entregado'] %}
+        <option value="{{ e }}" {% if estado_f == e %}selected{% endif %}>
+          {{ e|capitalize }}
+        </option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="col-auto">
+      <button type="submit" class="btn btn-outline-secondary">Filtrar</button>
+      <a href="{{ url_for('mantenimiento.pedidos_equipo') }}" class="btn btn-link text-muted">Limpiar</a>
+    </div>
+  </form>
+
+  {# ── Tabla de pedidos ───────────────────────────────────────────────────── #}
+  <div class="card premium-card border-0 shadow-sm">
+    <div class="card-body p-0">
+      <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+          <thead class="bg-light text-muted small text-uppercase fw-semibold" style="letter-spacing:.5px">
+            <tr>
+              <th class="border-0 ps-4 py-3">Folio</th>
+              <th class="border-0 py-3">Trabajador</th>
+              <th class="border-0 py-3">Descripción</th>
+              <th class="border-0 py-3">Fecha</th>
+              <th class="border-0 py-3 text-center">Estado</th>
+              <th class="border-0 py-3 text-end pe-4">Acciones</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for p in pedidos %}
+            <tr>
+              <td class="ps-4">
+                <span class="fw-bold text-dark font-monospace small">{{ p.folio }}</span>
+              </td>
+              <td>
+                <div class="fw-semibold">{{ p.trabajador.nombre }}</div>
+                <div class="text-muted small">{{ p.trabajador.cargo }}</div>
+              </td>
+              <td>
+                <div class="text-dark">{{ p.descripcion[:70] }}{% if p.descripcion|length > 70 %}…{% endif %}</div>
+                {% set items = p.get_items() %}
+                {% if items %}
+                <div class="text-muted small">{{ items|length }} artículo(s)</div>
+                {% endif %}
+              </td>
+              <td class="small text-muted">{{ p.fecha_pedido.strftime('%d/%m/%Y') }}</td>
+              <td class="text-center">
+                {% if p.estado == 'pendiente' %}
+                  <span class="badge bg-warning text-dark rounded-pill px-2">⏳ Pendiente</span>
+                {% elif p.estado == 'aprobado' %}
+                  <span class="badge bg-success rounded-pill px-2">✓ Aprobado</span>
+                {% elif p.estado == 'rechazado' %}
+                  <span class="badge bg-danger rounded-pill px-2">✗ Rechazado</span>
+                {% else %}
+                  <span class="badge bg-info rounded-pill px-2">📦 Entregado</span>
+                {% endif %}
+              </td>
+              <td class="text-end pe-4">
+                <div class="d-flex justify-content-end gap-1">
+                  {# Descargar xlsx #}
+                  <a href="{{ url_for('mantenimiento.descargar_xlsx_pedido_equipo', pedido_id=p.id) }}"
+                     class="btn btn-sm btn-outline-success" title="Descargar formato Excel">
+                    <i class="bi bi-file-earmark-excel"></i>
+                  </a>
+                  {# Resolver (admin) — modal trigger #}
+                  <button type="button" class="btn btn-sm btn-outline-primary"
+                          data-bs-toggle="modal"
+                          data-bs-target="#modalResolver{{ p.id }}"
+                          title="Actualizar estado">
+                    <i class="bi bi-pencil-square"></i>
+                  </button>
+                </div>
+              </td>
+            </tr>
+
+            {# ── Modal resolver pedido ─────────────────────────────────── #}
+            <div class="modal fade" id="modalResolver{{ p.id }}" tabindex="-1">
+              <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content border-0 shadow">
+                  <div class="modal-header border-0 pb-0">
+                    <h5 class="modal-title fw-bold">Actualizar pedido <span class="text-danger">{{ p.folio }}</span></h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                  </div>
+                  <form action="{{ url_for('mantenimiento.resolver_pedido_equipo', pedido_id=p.id) }}" method="post">
+                    <div class="modal-body pt-3">
+                      {# Artículos solicitados #}
+                      {% set items = p.get_items() %}
+                      {% if items %}
+                      <div class="mb-3 p-3 bg-light rounded small">
+                        <div class="fw-semibold mb-2 text-muted text-uppercase" style="font-size:.75rem;letter-spacing:.5px">Artículos solicitados</div>
+                        {% for it in items %}
+                        <div class="d-flex gap-2 py-1 border-bottom">
+                          <span class="text-muted">{{ it.cantidad }} {{ it.unidad }}</span>
+                          <span>{{ it.descripcion }}</span>
+                        </div>
+                        {% endfor %}
+                      </div>
+                      {% endif %}
+
+                      <div class="mb-3">
+                        <label class="form-label fw-semibold">Nuevo estado</label>
+                        <select name="estado" class="form-select" required>
+                          {% for e in ['pendiente','aprobado','rechazado','entregado'] %}
+                          <option value="{{ e }}" {% if p.estado == e %}selected{% endif %}>
+                            {{ e|capitalize }}
+                          </option>
+                          {% endfor %}
+                        </select>
+                      </div>
+                      <div class="mb-3">
+                        <label class="form-label fw-semibold">Notas del administrador</label>
+                        <textarea name="notas_admin" class="form-control" rows="3"
+                                  placeholder="Observaciones, condiciones, etc.">{{ p.notas_admin or '' }}</textarea>
+                      </div>
+                    </div>
+                    <div class="modal-footer border-0 pt-0">
+                      <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+                      <button type="submit" class="btn btn-primary">Guardar cambios</button>
+                    </div>
+                  </form>
+                </div>
+              </div>
+            </div>
+
+            {% else %}
+            <tr>
+              <td colspan="6" class="text-center py-5 text-muted">
+                <div class="mb-2"><i class="bi bi-cart-x fs-1 text-light"></i></div>
+                No hay pedidos de equipo registrados.
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+</div>
+{% endblock %}

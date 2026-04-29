@@ -1,0 +1,146 @@
+{% extends 'base.html' %}
+{% block title %}Firmar y Entregar — {{ orden.folio }}{% endblock %}
+{% block breadcrumb %}
+  <a href="{{ url_for('mantenimiento.ordenes_servicio') }}" class="text-muted text-decoration-none">Órdenes de Servicio</a>
+  <span class="mx-1 text-muted">/</span><strong>Firmar y Entregar</strong>
+{% endblock %}
+
+{% block content %}
+<div class="animate-fade-in" style="max-width:700px; margin:0 auto;">
+  <h1 class="page-title-gradient">Firmar y Entregar Orden</h1>
+  <p class="page-subtitle mb-4">
+    Orden <strong class="font-monospace">{{ orden.folio }}</strong> —
+    Servicio: <span class="text-capitalize">{{ orden.servicios_texto() }}</span>
+  </p>
+
+  {# Estado del servicio #}
+  {% if orden.servicio_realizado %}
+  <div class="alert alert-success mb-4">
+    <i class="bi bi-check-circle-fill me-2"></i>
+    Servicio <strong>realizado</strong> el {{ orden.fecha_ejecucion.strftime('%d/%m/%Y') }}
+    {% if orden.nombre_realizo %} por {{ orden.nombre_realizo }}{% endif %}.
+  </div>
+  {% else %}
+  <div class="alert alert-danger mb-4">
+    <i class="bi bi-x-circle-fill me-2"></i>
+    Servicio <strong>no realizado</strong>.
+    {% if orden.motivo_no_realizado %} Motivo: {{ orden.motivo_no_realizado }}{% endif %}
+  </div>
+  {% endif %}
+
+  <form method="POST">
+
+    {# ── Firma "Realizó" ── #}
+    <div class="premium-card mb-4">
+      <div class="card-body p-4">
+        <h6 class="fw-bold mb-3"><i class="bi bi-person-check me-2"></i>Realizó el servicio</h6>
+        {% if trabajadores_con_firma %}
+        <div class="mb-3">
+          <label class="form-label">Selecciona el técnico <span class="text-danger">*</span></label>
+          <select name="id_trabajador_firma" id="selTrabajador" class="form-select"
+                  required onchange="previewFirma(this)">
+            <option value="">— Selecciona un técnico —</option>
+            {% for t in trabajadores_con_firma %}
+            <option value="{{ t.id }}"
+                    data-firma="{{ t.firma_trabajador.firma_b64 if t.firma_trabajador else '' }}">
+              {{ t.nombre }} — {{ t.cargo }}
+            </option>
+            {% endfor %}
+          </select>
+        </div>
+        <div id="previewRealizo" class="border rounded bg-white text-center p-2 d-none" style="min-height:70px;">
+          <img id="imgRealizo" src="" alt="Firma" style="max-height:60px; max-width:100%;">
+        </div>
+        {% else %}
+        <div class="alert alert-warning">
+          <i class="bi bi-exclamation-triangle me-2"></i>
+          Ningún técnico tiene firma registrada.
+          <a href="{{ url_for('mantenimiento.personal') }}" class="alert-link">Ir a Personal</a>
+          para registrar firmas.
+        </div>
+        {% endif %}
+      </div>
+    </div>
+
+    {# ── Firma "Supervisó" (usuario actual) ── #}
+    <div class="premium-card mb-4">
+      <div class="card-body p-4">
+        <h6 class="fw-bold mb-2"><i class="bi bi-person-badge me-2"></i>Supervisó</h6>
+        <p class="text-muted small mb-3">Tu firma como supervisor: <strong>{{ current_user.nombre_completo }}</strong></p>
+        {% if mi_firma %}
+        <div class="border rounded bg-white text-center p-2" style="min-height:70px;">
+          <img src="{{ mi_firma.firma_b64 }}" alt="Mi firma" style="max-height:60px; max-width:100%;">
+        </div>
+        <div class="form-text text-success mt-1">
+          <i class="bi bi-check-circle me-1"></i>Firma registrada.
+          <a href="{{ url_for('mantenimiento.mi_firma_mant') }}">Actualizar</a>
+        </div>
+        {% else %}
+        <div class="alert alert-warning">
+          <i class="bi bi-exclamation-triangle me-2"></i>
+          No tienes firma registrada.
+          <a href="{{ url_for('mantenimiento.mi_firma_mant') }}" class="alert-link">Registrar mi firma</a>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+
+    {# ── Firma "Conformidad del solicitante" ── #}
+    <div class="premium-card mb-4">
+      <div class="card-body p-4">
+        <h6 class="fw-bold mb-2"><i class="bi bi-person-check-fill me-2"></i>Conformidad del solicitante</h6>
+        <p class="text-muted small mb-3">
+          Solicitante: <strong>{{ orden.solicitante.nombre_completo }}</strong>
+        </p>
+        {% if firma_solicitante %}
+        <div class="border rounded bg-white text-center p-2" style="min-height:70px;">
+          <img src="{{ firma_solicitante.firma_b64 }}" alt="Firma solicitante"
+               style="max-height:60px; max-width:100%;">
+        </div>
+        <div class="form-text text-success mt-1">
+          <i class="bi bi-check-circle me-1"></i>Firma del solicitante registrada.
+        </div>
+        {% else %}
+        <div class="alert alert-info">
+          <i class="bi bi-info-circle me-2"></i>
+          El solicitante aún no ha registrado su firma.
+          El documento se generará con el espacio vacío para que firme físicamente.
+        </div>
+        {% endif %}
+      </div>
+    </div>
+
+    <input type="hidden" name="accion" value="entregar">
+    <div class="d-flex gap-3">
+      <button type="submit" class="btn btn-dark px-5"
+              {% if not mi_firma or not trabajadores_con_firma %}disabled{% endif %}>
+        <i class="bi bi-file-earmark-check me-2"></i>Entregar y Generar Documento
+      </button>
+      <a href="{{ url_for('mantenimiento.ordenes_servicio') }}" class="btn btn-outline-secondary">Cancelar</a>
+    </div>
+    {% if not mi_firma %}
+    <p class="text-danger small mt-2">
+      <i class="bi bi-exclamation-triangle me-1"></i>
+      Debes registrar tu firma antes de poder entregar.
+    </p>
+    {% endif %}
+  </form>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function previewFirma(sel) {
+  const opt    = sel.options[sel.selectedIndex];
+  const firma  = opt.dataset.firma;
+  const div    = document.getElementById('previewRealizo');
+  const img    = document.getElementById('imgRealizo');
+  if (firma) {
+    img.src = firma;
+    div.classList.remove('d-none');
+  } else {
+    div.classList.add('d-none');
+  }
+}
+</script>
+{% endblock %}

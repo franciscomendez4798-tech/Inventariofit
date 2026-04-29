@@ -1,0 +1,135 @@
+{% extends 'base.html' %}
+{% block title %}Nuevo Pedido de Equipo{% endblock %}
+{% block breadcrumb %}
+  <a href="{{ url_for('mantenimiento.pedidos_equipo') }}" class="text-muted text-decoration-none">Pedidos de Equipo</a>
+  <span class="mx-2 text-muted">&rsaquo;</span>
+  <strong>Nuevo pedido</strong>
+{% endblock %}
+
+{% block content %}
+<div class="animate-fade-in" style="max-width:760px;margin:0 auto">
+
+  <div class="maintenance-header mb-4">
+    <h2 class="h3 fw-bold text-dark mb-1">
+      <i class="bi bi-cart-plus text-danger me-2"></i>Nuevo Pedido de Equipo al Administrador
+    </h2>
+    <p class="text-muted">
+      Completa el formulario. Se generará un folio <strong>MANT-YYYY-NNN</strong> y el administrador
+      podrá aprobar o rechazar el pedido. Una vez guardado, puedes descargar el formato
+      <strong>R-AP-33-01-01</strong> en Excel.
+    </p>
+  </div>
+
+  <div class="premium-card border-0 shadow-sm">
+    <form method="post" id="formPedidoEquipo">
+      <div class="card-body p-4">
+
+        {# ── Trabajador ─────────────────────────────────────────────────── #}
+        <div class="mb-4">
+          <label for="id_trabajador" class="form-label fw-semibold">
+            <i class="bi bi-person-badge me-1 text-danger"></i>Técnico solicitante
+          </label>
+          <select id="id_trabajador" name="id_trabajador" class="form-select" required>
+            <option value="">Selecciona un técnico…</option>
+            {% for t in trabajadores %}
+            <option value="{{ t.id }}">{{ t.nombre }} — {{ t.cargo }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        {# ── Descripción / justificación ────────────────────────────────── #}
+        <div class="mb-4">
+          <label for="descripcion" class="form-label fw-semibold">
+            <i class="bi bi-card-text me-1 text-danger"></i>Descripción del pedido / justificación
+          </label>
+          <textarea id="descripcion" name="descripcion" class="form-control" rows="3"
+                    placeholder="Ej.: Se requieren materiales para mantenimiento preventivo de aires acondicionados del edificio A…"
+                    required></textarea>
+          <div class="form-text text-muted">Explica brevemente el motivo y urgencia del pedido.</div>
+        </div>
+
+        {# ── Artículos ──────────────────────────────────────────────────── #}
+        <div class="mb-2 d-flex align-items-center justify-content-between">
+          <label class="form-label fw-semibold mb-0">
+            <i class="bi bi-list-check me-1 text-danger"></i>Artículos solicitados
+          </label>
+          <button type="button" id="btnAddItem" class="btn btn-sm btn-outline-danger">
+            <i class="bi bi-plus-circle me-1"></i>Agregar artículo
+          </button>
+        </div>
+
+        <div class="rounded overflow-hidden border mb-1">
+          <table class="table table-sm align-middle mb-0" id="tablaItems">
+            <thead class="bg-light text-muted small text-uppercase fw-semibold" style="letter-spacing:.5px">
+              <tr>
+                <th class="py-2 ps-3" style="width:80px">Cantidad</th>
+                <th class="py-2" style="width:100px">Unidad</th>
+                <th class="py-2">Descripción del artículo</th>
+                <th class="py-2 text-center" style="width:44px"></th>
+              </tr>
+            </thead>
+            <tbody id="itemsBody">
+              <tr class="item-row">
+                <td class="ps-3"><input type="number" name="qty[]" class="form-control form-control-sm" value="1" min="1" style="width:70px"></td>
+                <td><input type="text" name="unit[]" class="form-control form-control-sm" placeholder="pza" style="width:90px"></td>
+                <td><input type="text" name="desc[]" class="form-control form-control-sm" placeholder="Nombre y especificación del artículo"></td>
+                <td class="text-center">
+                  <button type="button" class="btn btn-sm btn-link text-danger p-0 btn-remove-item" title="Eliminar">
+                    <i class="bi bi-trash3"></i>
+                  </button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="form-text text-muted mb-4">
+          Los artículos se incluirán en el formato Excel institucional al descargarlo.
+        </div>
+
+      </div>
+
+      <div class="card-footer bg-transparent d-flex gap-2 justify-content-end px-4 py-3 border-top">
+        <a href="{{ url_for('mantenimiento.pedidos_equipo') }}" class="btn btn-outline-secondary">Cancelar</a>
+        <button type="submit" class="btn btn-primary px-4">
+          <i class="bi bi-send me-1"></i>Enviar pedido al administrador
+        </button>
+      </div>
+    </form>
+  </div>
+
+</div>
+
+<script>
+(function () {
+  const tbody   = document.getElementById('itemsBody');
+  const btnAdd  = document.getElementById('btnAddItem');
+
+  function buildRow() {
+    const tr = document.createElement('tr');
+    tr.className = 'item-row';
+    tr.innerHTML = `
+      <td class="ps-3"><input type="number" name="qty[]" class="form-control form-control-sm" value="1" min="1" style="width:70px"></td>
+      <td><input type="text" name="unit[]" class="form-control form-control-sm" placeholder="pza" style="width:90px"></td>
+      <td><input type="text" name="desc[]" class="form-control form-control-sm" placeholder="Nombre y especificación del artículo"></td>
+      <td class="text-center">
+        <button type="button" class="btn btn-sm btn-link text-danger p-0 btn-remove-item" title="Eliminar">
+          <i class="bi bi-trash3"></i>
+        </button>
+      </td>`;
+    return tr;
+  }
+
+  btnAdd.addEventListener('click', () => {
+    tbody.appendChild(buildRow());
+    tbody.lastElementChild.querySelector('input[name="desc[]"]').focus();
+  });
+
+  tbody.addEventListener('click', e => {
+    const btn = e.target.closest('.btn-remove-item');
+    if (btn && tbody.querySelectorAll('.item-row').length > 1) {
+      btn.closest('tr').remove();
+    }
+  });
+})();
+</script>
+{% endblock %}

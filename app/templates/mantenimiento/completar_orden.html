@@ -1,0 +1,117 @@
+{% extends 'base.html' %}
+{% block title %}Completar Orden — {{ orden.folio }}{% endblock %}
+{% block breadcrumb %}
+  <a href="{{ url_for('mantenimiento.ordenes_servicio') }}" class="text-muted text-decoration-none">Órdenes de Servicio</a>
+  <span class="mx-1 text-muted">/</span><strong>Registrar Resultado</strong>
+{% endblock %}
+
+{% block content %}
+<div class="animate-fade-in" style="max-width:680px; margin:0 auto;">
+  <h1 class="page-title-gradient">Registrar Resultado del Servicio</h1>
+  <p class="page-subtitle mb-4">
+    Orden <strong class="font-monospace">{{ orden.folio }}</strong> —
+    Solicitada por <strong>{{ orden.solicitante.nombre_completo }}</strong>
+  </p>
+
+  {# Resumen de la solicitud #}
+  <div class="premium-card mb-4 border-start border-primary border-3">
+    <div class="card-body p-3">
+      <div class="row g-2 small">
+        <div class="col-md-6">
+          <span class="text-muted">Departamento:</span>
+          <strong class="ms-1">{{ orden.departamento.nombre if orden.departamento else '—' }}</strong>
+        </div>
+        <div class="col-md-6">
+          <span class="text-muted">Tipo:</span>
+          <strong class="ms-1 text-capitalize">{{ orden.tipo_mantenimiento }}</strong>
+        </div>
+        <div class="col-12">
+          <span class="text-muted">Servicios:</span>
+          <span class="ms-1">{{ orden.servicios_texto() }}</span>
+        </div>
+        <div class="col-12">
+          <span class="text-muted">Descripción:</span>
+          <span class="ms-1">{{ orden.descripcion }}</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <form method="POST">
+    {# ── Resultado del servicio ── #}
+    <div class="premium-card mb-4">
+      <div class="card-body p-4">
+        <h6 class="fw-bold mb-3"><i class="bi bi-clipboard-check me-2"></i>Resultado</h6>
+
+        <div class="mb-3">
+          <label class="form-label fw-semibold">Fecha de ejecución del servicio <span class="text-danger">*</span></label>
+          <input type="date" name="fecha_ejecucion" class="form-control"
+                 value="{{ now.strftime('%Y-%m-%d') }}" required>
+        </div>
+
+        <div class="mb-3">
+          <label class="form-label fw-semibold">¿Se realizó el servicio? <span class="text-danger">*</span></label>
+          <div class="d-flex gap-4">
+            <div class="form-check">
+              <input class="form-check-input" type="radio" name="servicio_realizado"
+                     value="si" id="si" required onchange="toggleMotivo(false)">
+              <label class="form-check-label fw-semibold text-success" for="si">
+                <i class="bi bi-check-circle me-1"></i>Sí, se realizó
+              </label>
+            </div>
+            <div class="form-check">
+              <input class="form-check-input" type="radio" name="servicio_realizado"
+                     value="no" id="no" onchange="toggleMotivo(true)">
+              <label class="form-check-label fw-semibold text-danger" for="no">
+                <i class="bi bi-x-circle me-1"></i>No se realizó
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <div class="mb-3 d-none" id="motivoDiv">
+          <label class="form-label fw-semibold">Motivo de no realización <span class="text-danger">*</span></label>
+          <textarea name="motivo_no_realizado" id="motivoInput" rows="2" class="form-control"
+                    maxlength="300" placeholder="Explica por qué no se pudo realizar el servicio…"></textarea>
+        </div>
+
+        <div class="mb-3">
+          <label class="form-label fw-semibold">Técnico que realizó el servicio</label>
+          <select name="id_trabajador_realizo" class="form-select">
+            <option value="">— Sin asignar —</option>
+            {% for t in trabajadores %}
+            <option value="{{ t.id }}">{{ t.nombre }} — {{ t.cargo }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div class="mb-1">
+          <label class="form-label fw-semibold">Notas adicionales</label>
+          <textarea name="notas_mantenimiento" rows="2" class="form-control"
+                    maxlength="500" placeholder="Observaciones, materiales usados, etc."></textarea>
+        </div>
+      </div>
+    </div>
+
+    <div class="d-flex gap-3">
+      <button type="submit" class="btn btn-dark px-5">
+        <i class="bi bi-arrow-right-circle me-2"></i>Guardar y continuar a Firmas
+      </button>
+      <a href="{{ url_for('mantenimiento.ordenes_servicio') }}" class="btn btn-outline-secondary">Cancelar</a>
+    </div>
+  </form>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function toggleMotivo(show) {
+  const div   = document.getElementById('motivoDiv');
+  const input = document.getElementById('motivoInput');
+  div.classList.toggle('d-none', !show);
+  input.required = show;
+}
+// Pasar la fecha de hoy al input de fecha
+document.querySelector('[name=fecha_ejecucion]').valueAsDate = new Date();
+</script>
+{% endblock %}

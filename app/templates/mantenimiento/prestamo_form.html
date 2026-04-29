@@ -1,0 +1,64 @@
+{% extends 'base.html' %}
+{% block title %}Registrar Préstamo{% endblock %}
+{% block breadcrumb %}
+  <a href="{{ url_for('mantenimiento.panel') }}" class="text-muted text-decoration-none">Mantenimiento</a>
+  <span class="mx-2 text-muted">&rsaquo;</span>
+  <a href="{{ url_for('mantenimiento.prestamos') }}" class="text-muted text-decoration-none">Préstamos</a>
+  <span class="mx-2 text-muted">&rsaquo;</span>
+  <strong>Nuevo Préstamo</strong>
+{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-md-8 col-lg-6">
+    <div class="animate-fade-in">
+      <h1 class="page-title-gradient">Asignar Herramienta</h1>
+      <p class="page-subtitle mb-4">Registra la salida temporal de una herramienta del pañol a un trabajador.</p>
+    </div>
+
+    <div class="premium-card animate-fade-in delay-1">
+      <div class="card-body p-4">
+        <form method="POST">
+          <div class="mb-4">
+            <label class="form-label fw-bold text-dark">Herramienta <span class="text-danger">*</span></label>
+            <select name="id_herramienta" class="form-select form-select-lg bg-light" required autofocus>
+              <option value="">Seleccione la herramienta...</option>
+              {% for h in herramientas %}
+                <option value="{{ h.id }}">
+                  {{ h.nombre }} {% if h.codigo %}({{ h.codigo }}){% endif %} - {{ h.estado_fisico|capitalize }}
+                </option>
+              {% endfor %}
+            </select>
+            {% if not herramientas %}
+            <div class="form-text text-danger mt-2">
+              <i class="bi bi-exclamation-triangle"></i> No hay herramientas disponibles o todas están en uso. 
+              <a href="{{ url_for('mantenimiento.herramienta_form') }}">Agregar una nueva</a>.
+            </div>
+            {% endif %}
+          </div>
+
+          <div class="mb-4">
+            <label class="form-label fw-bold text-dark">Trabajador asignado <span class="text-danger">*</span></label>
+            <select name="id_trabajador" class="form-select form-select-lg" required>
+              <option value="">Seleccione trabajador...</option>
+              {% for t in trabajadores %}
+                <option value="{{ t.id }}">{{ t.nombre }} ({{ t.cargo }})</option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <div class="mb-4">
+            <label class="form-label fw-semibold text-muted">Notas u observaciones al momento del préstamo</label>
+            <textarea name="notas" class="form-control" rows="3" placeholder="Ej. Se entrega con accesorios completos..."></textarea>
+          </div>
+
+          <div class="d-flex justify-content-end gap-2 mt-5">
+            <a href="{{ url_for('mantenimiento.prestamos') }}" class="btn btn-light px-4">Cancelar</a>
+            <button type="submit" class="btn btn-primary px-5" {% if not herramientas %}disabled{% endif %}>Registrar Préstamo</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

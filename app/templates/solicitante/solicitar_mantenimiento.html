@@ -1,0 +1,123 @@
+{% extends 'base.html' %}
+{% block title %}Solicitar Servicio de Mantenimiento{% endblock %}
+{% block breadcrumb %}
+  <span class="text-muted">Mi Portal</span>
+  <span class="mx-1 text-muted">/</span>
+  <a href="{{ url_for('solicitante.mis_ordenes_servicio') }}" class="text-muted text-decoration-none">Mis Órdenes</a>
+  <span class="mx-1 text-muted">/</span>
+  <strong>Nueva Solicitud</strong>
+{% endblock %}
+
+{% block content %}
+<div class="animate-fade-in" style="max-width:700px; margin:0 auto;">
+  <h1 class="page-title-gradient">Solicitar Servicio de Mantenimiento</h1>
+  <p class="page-subtitle mb-4">Completa el formulario. Tu solicitud llegará directamente al departamento de Mantenimiento.</p>
+
+  <form method="POST">
+    {# ── Datos del solicitante (auto) ── #}
+    <div class="premium-card mb-4">
+      <div class="card-body p-4">
+        <h6 class="fw-bold mb-3 text-muted"><i class="bi bi-person me-2"></i>Datos del solicitante</h6>
+        <div class="row g-3">
+          <div class="col-md-7">
+            <label class="form-label fw-semibold">Nombre del solicitante</label>
+            <input type="text" class="form-control" value="{{ current_user.nombre_completo }}" disabled>
+          </div>
+          <div class="col-md-5">
+            <label class="form-label fw-semibold">Departamento o área</label>
+            <input type="text" class="form-control" value="{{ depto.nombre if depto else 'Sin departamento' }}" disabled>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    {# ── Tipo de mantenimiento ── #}
+    <div class="premium-card mb-4">
+      <div class="card-body p-4">
+        <h6 class="fw-bold mb-3"><i class="bi bi-tools me-2"></i>Tipo de Mantenimiento <span class="text-danger">*</span></h6>
+        <div class="d-flex gap-4">
+          <div class="form-check">
+            <input class="form-check-input" type="radio" name="tipo_mantenimiento" id="tipo_prev" value="preventivo" required>
+            <label class="form-check-label fw-semibold" for="tipo_prev">
+              <i class="bi bi-shield-check text-success me-1"></i>Preventivo
+            </label>
+            <div class="form-text">Mantenimiento programado para evitar fallas.</div>
+          </div>
+          <div class="form-check">
+            <input class="form-check-input" type="radio" name="tipo_mantenimiento" id="tipo_corr" value="correctivo">
+            <label class="form-check-label fw-semibold" for="tipo_corr">
+              <i class="bi bi-wrench text-warning me-1"></i>Correctivo
+            </label>
+            <div class="form-text">Reparación de una falla o daño existente.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    {# ── Tipo de servicio ── #}
+    <div class="premium-card mb-4">
+      <div class="card-body p-4">
+        <h6 class="fw-bold mb-3"><i class="bi bi-list-check me-2"></i>Tipo de servicio que solicita <span class="text-danger">*</span></h6>
+        <div class="row g-2">
+          {% set servicios = [
+            ('plomeria','Plomería','droplet'),
+            ('computo','Cómputo','pc'),
+            ('electricidad','Electricidad','lightning-charge'),
+            ('pintura','Pintura','brush'),
+            ('jardineria','Jardinería','tree'),
+            ('limpieza','Limpieza','stars'),
+            ('ac','A/C','thermometer-half'),
+            ('vehiculos','Vehículos','truck'),
+          ] %}
+          {% for key, label, icon in servicios %}
+          <div class="col-6 col-md-4 col-lg-3">
+            <div class="form-check">
+              <input class="form-check-input servicio-check" type="checkbox"
+                     name="servicios" value="{{ key }}" id="srv_{{ key }}">
+              <label class="form-check-label" for="srv_{{ key }}">
+                <i class="bi bi-{{ icon }} me-1"></i>{{ label }}
+              </label>
+            </div>
+          </div>
+          {% endfor %}
+          <div class="col-12 mt-1">
+            <div class="form-check">
+              <input class="form-check-input" type="checkbox" name="servicios"
+                     value="otro" id="srv_otro" onchange="toggleOtro(this)">
+              <label class="form-check-label fw-semibold" for="srv_otro">Otro (especificar)</label>
+            </div>
+            <input type="text" name="otro_servicio" id="otroInput"
+                   class="form-control mt-2 d-none" maxlength="200"
+                   placeholder="Describe el tipo de servicio…">
+          </div>
+        </div>
+      </div>
+    </div>
+
+    {# ── Descripción ── #}
+    <div class="premium-card mb-4">
+      <div class="card-body p-4">
+        <h6 class="fw-bold mb-2"><i class="bi bi-card-text me-2"></i>Descripción del servicio solicitado <span class="text-danger">*</span></h6>
+        <textarea name="descripcion" rows="4" class="form-control" required maxlength="1000"
+                  placeholder="Describe detalladamente el problema o servicio que necesitas…"></textarea>
+        <div class="form-text">Sé específico: ubicación, síntoma, urgencia, etc.</div>
+      </div>
+    </div>
+
+    <div class="d-flex gap-3">
+      <button type="submit" class="btn btn-danger px-5">
+        <i class="bi bi-send me-2"></i>Enviar Solicitud
+      </button>
+      <a href="{{ url_for('solicitante.mis_ordenes_servicio') }}" class="btn btn-outline-secondary">Cancelar</a>
+    </div>
+  </form>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function toggleOtro(chk) {
+  document.getElementById('otroInput').classList.toggle('d-none', !chk.checked);
+}
+</script>
+{% endblock %}

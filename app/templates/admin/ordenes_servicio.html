@@ -1,0 +1,116 @@
+{% extends 'base.html' %}
+{% block title %}Órdenes de Servicio — Admin{% endblock %}
+{% block breadcrumb %}
+  <span class="text-muted">Administración</span> <span class="mx-1 text-muted">/</span>
+  <strong>Órdenes de Servicio</strong>
+{% endblock %}
+
+{% block content %}
+<div class="animate-fade-in">
+  <div class="mb-4">
+    <h1 class="page-title-gradient mb-1">Órdenes de Servicio de Mantenimiento</h1>
+    <p class="page-subtitle">Vista de solo lectura. Las órdenes son gestionadas por Mantenimiento.</p>
+  </div>
+
+  {# KPIs #}
+  <div class="row g-3 mb-4">
+    {% set total     = ordenes|length %}
+    {% set pendientes = ordenes|selectattr('estado','in',['solicitada','en_proceso'])|list|length %}
+    {% set entregadas = ordenes|selectattr('estado','equalto','entregada')|list|length %}
+    {% for label, val, color in [
+      ('Total', total, 'primary'),
+      ('En curso', pendientes, 'warning'),
+      ('Entregadas', entregadas, 'success'),
+    ] %}
+    <div class="col-4">
+      <div class="premium-card text-center py-3">
+        <div class="premium-stat-value text-{{ color }}">{{ val }}</div>
+        <div class="premium-stat-label">{{ label }}</div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+
+  {# Filtros #}
+  <form method="GET" class="row g-2 mb-4">
+    <div class="col-md-5">
+      <input type="text" name="q" value="{{ q }}" class="form-control"
+             placeholder="Buscar por nombre del solicitante…">
+    </div>
+    <div class="col-md-4">
+      <select name="estado" class="form-select">
+        <option value="">— Todos los estados —</option>
+        {% set labels = {'solicitada':'Enviada','en_proceso':'En proceso','completada':'Completada','no_realizada':'No realizada','entregada':'Entregada'} %}
+        {% for e in ESTADOS %}
+        <option value="{{ e }}" {% if e == estado_f %}selected{% endif %}>{{ labels.get(e,e) }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="col-md-3">
+      <button type="submit" class="btn btn-primary w-100">
+        <i class="bi bi-search me-1"></i>Filtrar
+      </button>
+    </div>
+  </form>
+
+  {% set badge_color = {'solicitada':'primary','en_proceso':'warning','completada':'success','no_realizada':'danger','entregada':'dark'} %}
+  {% set badge_label = {'solicitada':'Enviada','en_proceso':'En proceso','completada':'Completada','no_realizada':'No realizada','entregada':'Entregada'} %}
+
+  {% if not ordenes %}
+  <div class="premium-card text-center py-5">
+    <i class="bi bi-inbox display-4 text-muted d-block mb-3"></i>
+    <p class="text-muted">No hay órdenes registradas.</p>
+  </div>
+  {% else %}
+  <div class="premium-card">
+    <div class="table-responsive">
+      <table class="table table-hover align-middle mb-0">
+        <thead class="table-light">
+          <tr>
+            <th>Folio</th>
+            <th>Solicitante</th>
+            <th>Tipo</th>
+            <th>Servicios</th>
+            <th>Fecha</th>
+            <th>Estado</th>
+            <th class="text-center">Doc.</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for o in ordenes %}
+          <tr>
+            <td class="font-monospace fw-bold small">{{ o.folio }}</td>
+            <td>
+              <div>{{ o.solicitante.nombre_completo }}</div>
+              <div class="text-muted small">{{ o.departamento.nombre if o.departamento else '—' }}</div>
+            </td>
+            <td><span class="badge bg-light text-dark text-capitalize">{{ o.tipo_mantenimiento }}</span></td>
+            <td class="small">{{ o.servicios_texto() or '—' }}</td>
+            <td class="small text-muted">{{ o.fecha_solicitud.strftime('%d/%m/%Y') }}</td>
+            <td>
+              <span class="badge bg-{{ badge_color.get(o.estado,'secondary') }}">
+                {{ badge_label.get(o.estado, o.estado) }}
+              </span>
+              {% if o.encuesta_completada %}
+              <br><span class="badge bg-success mt-1" style="font-size:.7rem;">Encuesta ✓</span>
+              {% endif %}
+            </td>
+            <td class="text-center">
+              {% if o.estado == 'entregada' and o.archivo_docx_path %}
+              <a href="{{ url_for('admin.descargar_orden_admin', orden_id=o.id) }}"
+                 class="btn btn-sm btn-outline-danger" title="Descargar PDF">
+                <i class="bi bi-file-earmark-pdf"></i>
+              </a>
+              {% else %}
+              <span class="text-muted">—</span>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,193 @@
+{% extends 'base.html' %}
+{% block title %}Auditoría — Bitácora{% endblock %}
+{% block breadcrumb %}
+  <span class="text-muted">Mantenimiento</span> <span class="mx-1 text-muted">/</span> Auditoría
+{% endblock %}
+
+{% block content %}
+<div class="animate-fade-in">
+  <h1 class="page-title-gradient">Bitácora de Movimientos</h1>
+  <p class="page-subtitle mb-4">Registro completo de todas las entradas, salidas y ajustes del inventario para auditoría.</p>
+</div>
+
+<!-- Stats rápidos -->
+<div class="row g-3 mb-5 animate-fade-in delay-1">
+  <div class="col-md-4">
+    <div class="premium-card">
+      <div class="premium-stat-card">
+        <div class="stat-icon-premium gradient-dark">
+          <i class="bi bi-box-arrow-in-down"></i>
+        </div>
+        <div>
+          <div class="premium-stat-value text-success">{{ total_entradas }}</div>
+          <div class="premium-stat-label">Total Entradas</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-4">
+    <div class="premium-card">
+      <div class="premium-stat-card">
+        <div class="stat-icon-premium gradient-rojo">
+          <i class="bi bi-box-arrow-up"></i>
+        </div>
+        <div>
+          <div class="premium-stat-value text-warning">{{ total_salidas }}</div>
+          <div class="premium-stat-label">Total Salidas</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-4">
+    <div class="premium-card">
+      <div class="premium-stat-card">
+        <div class="stat-icon-premium gradient-dorado">
+          <i class="bi bi-arrow-left-right"></i>
+        </div>
+        <div>
+          <div class="premium-stat-value text-info">{{ total_ajustes }}</div>
+          <div class="premium-stat-label">Total Ajustes</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Filtros avanzados -->
+<div class="premium-card mb-4 animate-fade-in delay-2">
+  <div class="card-body p-3">
+    <form method="GET" class="row g-3 align-items-end">
+      <div class="col-md-4">
+        <label class="form-label small fw-semibold text-muted text-uppercase mb-1">Buscar material</label>
+        <div class="input-group">
+          <span class="input-group-text bg-transparent border-end-0">
+            <i class="bi bi-search text-muted"></i>
+          </span>
+          <input type="text" name="q" value="{{ q }}" class="form-control border-start-0"
+                 placeholder="Nombre del material…">
+        </div>
+      </div>
+      <div class="col-md-3">
+        <label class="form-label small fw-semibold text-muted text-uppercase mb-1">Tipo de movimiento</label>
+        <select name="tipo" class="form-select">
+          <option value="" {% if not tipo %}selected{% endif %}>Todos</option>
+          <option value="entrada"  {% if tipo == 'entrada' %}selected{% endif %}>Entrada</option>
+          <option value="salida"   {% if tipo == 'salida' %}selected{% endif %}>Salida</option>
+          <option value="ajuste"   {% if tipo == 'ajuste' %}selected{% endif %}>Ajuste</option>
+        </select>
+      </div>
+      <div class="col-md-3">
+        <label class="form-label small fw-semibold text-muted text-uppercase mb-1">Fecha</label>
+        <input type="date" name="fecha" value="{{ fecha }}" class="form-control">
+      </div>
+      <div class="col-md-2">
+        <div class="d-flex gap-2">
+          <button type="submit" class="btn btn-primary flex-fill">Filtrar</button>
+          <a href="{{ url_for('mantenimiento.auditoria') }}" class="btn btn-outline-secondary" title="Limpiar">
+            <i class="bi bi-x-lg"></i>
+          </a>
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Resultado de filtros activos -->
+{% if q or tipo or fecha %}
+<div class="alert alert-info alert-dismissible py-2 mb-3 animate-fade-in">
+  <i class="bi bi-funnel-fill me-2"></i>
+  Filtrando:
+  {% if tipo %}<strong>{{ tipo|capitalize }}</strong>{% endif %}
+  {% if q %} · Material "<strong>{{ q }}</strong>"{% endif %}
+  {% if fecha %} · Fecha <strong>{{ fecha }}</strong>{% endif %}
+  — <strong>{{ movimientos|length }}</strong> resultado(s)
+  <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+</div>
+{% endif %}
+
+<!-- Bitácora -->
+<div class="premium-card animate-fade-in delay-3">
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table class="table table-hover align-middle mb-0">
+        <thead class="bg-light text-muted small text-uppercase fw-semibold" style="letter-spacing:.5px">
+          <tr>
+            <th class="border-0 ps-4 py-3">#</th>
+            <th class="border-0 py-3">Fecha y Hora</th>
+            <th class="border-0 py-3">Tipo</th>
+            <th class="border-0 py-3">Material</th>
+            <th class="border-0 py-3 text-center">Cantidad</th>
+            <th class="border-0 py-3 text-center">Stock Resultante</th>
+            <th class="border-0 py-3">Motivo / Referencia</th>
+          </tr>
+        </thead>
+        <tbody class="border-top-0">
+          {% for m in movimientos %}
+          <tr>
+            <td class="ps-4 text-muted small">{{ m.id }}</td>
+            <td>
+              <div class="fw-semibold">{{ m.fecha.strftime('%d %b %Y') }}</div>
+              <div class="text-muted small">{{ m.fecha.strftime('%H:%M:%S') }}</div>
+            </td>
+            <td>
+              {% if m.tipo_movimiento == 'entrada' %}
+                <span class="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25 rounded-pill px-3">
+                  <i class="bi bi-arrow-down-circle me-1"></i>Entrada
+                </span>
+              {% elif m.tipo_movimiento == 'salida' %}
+                <span class="badge bg-warning bg-opacity-15 text-warning border border-warning border-opacity-25 rounded-pill px-3">
+                  <i class="bi bi-arrow-up-circle me-1"></i>Salida
+                </span>
+              {% else %}
+                <span class="badge bg-info bg-opacity-10 text-info border border-info border-opacity-25 rounded-pill px-3">
+                  <i class="bi bi-arrow-left-right me-1"></i>Ajuste
+                </span>
+              {% endif %}
+            </td>
+            <td>
+              <div class="fw-bold text-dark">{{ m.material.nombre }}</div>
+              <div class="text-muted small">{{ m.material.categoria.nombre }}</div>
+            </td>
+            <td class="text-center">
+              <span class="fw-bold {% if m.tipo_movimiento == 'entrada' %}text-success{% elif m.tipo_movimiento == 'salida' %}text-warning{% else %}text-info{% endif %}">
+                {% if m.tipo_movimiento == 'entrada' %}+{% elif m.tipo_movimiento == 'salida' %}-{% endif %}
+                {{ m.cantidad }} {{ m.material.unidad_medida }}
+              </span>
+            </td>
+            <td class="text-center">
+              <span class="text-muted fw-semibold">{{ m.stock_resultante }}</span>
+            </td>
+            <td>
+              <span class="text-muted small">{{ m.motivo or '—' }}</span>
+              {% if m.id_pedido %}
+              <div>
+                <span class="badge bg-primary bg-opacity-10 text-primary small rounded-pill">
+                  <i class="bi bi-clipboard me-1"></i>Pedido #{{ m.id_pedido }}
+                </span>
+              </div>
+              {% endif %}
+            </td>
+          </tr>
+          {% else %}
+          <tr>
+            <td colspan="7" class="text-center py-5 text-muted">
+              <i class="bi bi-journal-text fs-1 text-light d-block mb-2"></i>
+              No se encontraron movimientos con los filtros aplicados.
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    {% if movimientos %}
+    <div class="p-3 border-top d-flex justify-content-between align-items-center text-muted small">
+      <span><i class="bi bi-list-ul me-1"></i>{{ movimientos|length }} movimiento(s) encontrado(s)</span>
+      <a href="{{ url_for('mantenimiento.auditoria') }}" class="btn btn-sm btn-outline-secondary">
+        <i class="bi bi-arrow-counterclockwise me-1"></i>Ver todo el historial
+      </a>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

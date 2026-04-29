@@ -1,0 +1,125 @@
+{# templates/admin/departamento_form.html #}
+{% extends "base.html" %}
+{% block title %}{{ 'Nuevo departamento' if es_nuevo else 'Editar ' + departamento.nombre }}{% endblock %}
+
+{% block breadcrumb %}
+  <a href="{{ url_for('admin.departamentos') }}" class="text-decoration-none text-muted">Departamentos</a>
+  &rsaquo; <strong>{{ 'Nuevo departamento' if es_nuevo else 'Editar' }}</strong>
+{% endblock %}
+
+{% block content %}
+<h1 class="page-title">{{ 'Nuevo departamento' if es_nuevo else 'Editar departamento' }}</h1>
+<p class="page-subtitle">
+  {{ 'Registra un departamento y genera automáticamente una cuenta de acceso.' if es_nuevo 
+     else 'Modifica la información y permisos del departamento.' }}
+</p>
+
+<div class="row">
+  <div class="col-lg-7">
+    <div class="card">
+      <div class="card-body">
+        <form method="POST">
+          <div class="row g-3">
+
+            <div class="col-md-8">
+              <label class="form-label">Nombre del departamento *</label>
+              <input type="text" name="nombre" class="form-control"
+                     value="{{ departamento.nombre or '' }}" required
+                     placeholder="Ej. Departamento de Contabilidad">
+            </div>
+
+            <div class="col-md-4">
+              <label class="form-label">Código *</label>
+              <input type="text" name="codigo" class="form-control"
+                     value="{{ departamento.codigo or '' }}" required
+                     placeholder="Ej. CONT" style="text-transform:uppercase"
+                     maxlength="20">
+              <div class="form-text">Identificador único corto.</div>
+            </div>
+
+            <div class="col-12">
+              <label class="form-label">Descripción / Función</label>
+              <textarea name="descripcion" class="form-control" rows="2"
+                        placeholder="¿Qué hace este departamento? ¿De qué área se encarga?">{{ departamento.descripcion or '' }}</textarea>
+            </div>
+
+            <!-- Categorías permitidas -->
+            <div class="col-12">
+              <label class="form-label">
+                <i class="bi bi-tag me-1"></i>Categorías de materiales permitidas
+              </label>
+              <div class="form-text mb-2">
+                Selecciona qué tipos de materiales podrá solicitar este departamento.
+              </div>
+              <div class="row g-2">
+                {% for cat in categorias %}
+                <div class="col-6 col-md-4">
+                  <div class="form-check">
+                    <input class="form-check-input" type="checkbox"
+                           name="categorias" value="{{ cat.id }}"
+                           id="cat_{{ cat.id }}"
+                           {{ 'checked' if cat in departamento.categorias }}>
+                    <label class="form-check-label" for="cat_{{ cat.id }}">
+                      {{ cat.nombre }}
+                    </label>
+                  </div>
+                </div>
+                {% endfor %}
+              </div>
+            </div>
+
+            {% if es_nuevo %}
+            <!-- Datos del encargado (solo al crear) -->
+            <div class="col-12">
+              <hr>
+              <h6 class="fw-bold mb-1">
+                <i class="bi bi-person-plus me-2" style="color:var(--color-primary)"></i>
+                Cuenta del encargado
+              </h6>
+              <p class="small text-muted mb-3">
+                Se generará automáticamente un correo y contraseña para el encargado del departamento.
+              </p>
+            </div>
+            <div class="col-12">
+              <label class="form-label">Nombre del encargado</label>
+              <input type="text" name="nombre_encargado" class="form-control"
+                     placeholder="Ej. Lic. María García López">
+              <div class="form-text">Si se deja vacío, se usará "Encargado [nombre depto]".</div>
+            </div>
+            {% endif %}
+
+          </div><!-- /row g-3 -->
+
+          <hr class="my-4">
+          <div class="d-flex gap-2">
+            <button type="submit" class="btn btn-primary">
+              <i class="bi bi-check2 me-1"></i>
+              {{ 'Crear departamento y generar cuenta' if es_nuevo else 'Guardar cambios' }}
+            </button>
+            <a href="{{ url_for('admin.departamentos') }}" class="btn btn-outline-secondary">
+              Cancelar
+            </a>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  {% if es_nuevo %}
+  <div class="col-lg-5">
+    <div class="card" style="border:2px dashed var(--color-border-dark);background:var(--color-surface-2)">
+      <div class="card-body text-center py-4">
+        <i class="bi bi-key" style="font-size:2rem;color:var(--color-primary);opacity:.6"></i>
+        <p class="mt-2 mb-1 fw-semibold small">Generación automática de cuenta</p>
+        <p class="small text-muted mb-0">
+          Al crear el departamento, el sistema generará automáticamente:<br>
+          <strong>Correo:</strong> <code>[código]@inventario.fing.mx</code><br>
+          <strong>Contraseña:</strong> aleatoria de 10 caracteres<br><br>
+          <em>Anota las credenciales que se mostrarán después de crear el departamento.</em>
+        </p>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

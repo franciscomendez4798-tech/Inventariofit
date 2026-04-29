@@ -1,0 +1,83 @@
+{% extends 'base.html' %}
+{% block title %}Nueva Recepción{% endblock %}
+{% block breadcrumb %}
+  <span class="text-muted">Mantenimiento</span> <span class="mx-1 text-muted">/</span>
+  <a href="{{ url_for('mantenimiento.recepciones') }}" class="text-muted text-decoration-none">Recepciones</a>
+  <span class="mx-1 text-muted">/</span> <strong>Nueva</strong>
+{% endblock %}
+
+{% block content %}
+<div class="animate-fade-in" style="max-width: 640px; margin: 0 auto;">
+  <h1 class="page-title-gradient">Registrar Recepción</h1>
+  <p class="page-subtitle mb-4">Registra la entrada de materiales o herramientas al pañol.</p>
+
+  <div class="premium-card">
+    <div class="card-body p-4">
+      <form method="POST" action="{{ url_for('mantenimiento.recepcion_form') }}">
+
+        <div class="mb-4">
+          <label for="id_material" class="form-label fw-semibold">
+            Material / Herramienta <span class="text-danger">*</span>
+          </label>
+          <select name="id_material" id="id_material" class="form-select" required>
+            <option value="">— Selecciona un material —</option>
+            {% for m in materiales %}
+            <option value="{{ m.id }}" data-stock="{{ m.stock_actual }}" data-unidad="{{ m.unidad_medida }}">
+              {{ m.nombre }} (Stock actual: {{ m.stock_actual }} {{ m.unidad_medida }})
+            </option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <!-- Info rápida del material seleccionado -->
+        <div id="infoMaterial" class="alert alert-info d-none mb-4 py-2">
+          <i class="bi bi-info-circle me-2"></i>
+          Stock actual: <strong id="stockActual">—</strong>
+          <span id="unidadMaterial"></span>
+        </div>
+
+        <div class="mb-4">
+          <label for="cantidad" class="form-label fw-semibold">
+            Cantidad recibida <span class="text-danger">*</span>
+          </label>
+          <input type="number" name="cantidad" id="cantidad" class="form-control"
+                 min="1" required placeholder="ej. 20">
+          <div class="form-text">Número de unidades que ingresan al inventario.</div>
+        </div>
+
+        <div class="mb-4">
+          <label for="motivo" class="form-label fw-semibold">Motivo / Referencia</label>
+          <input type="text" name="motivo" id="motivo" class="form-control"
+                 placeholder="Compra, donación, devolución de préstamo, orden de compra…">
+          <div class="form-text">Opcional. Indica el origen o referencia de esta entrada.</div>
+        </div>
+
+        <div class="d-flex gap-3">
+          <button type="submit" class="btn btn-success px-4">
+            <i class="bi bi-box-arrow-in-down me-2"></i>Registrar recepción
+          </button>
+          <a href="{{ url_for('mantenimiento.recepciones') }}" class="btn btn-outline-secondary">
+            Cancelar
+          </a>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.getElementById('id_material').addEventListener('change', function() {
+  const opt = this.options[this.selectedIndex];
+  const info = document.getElementById('infoMaterial');
+  if (this.value) {
+    document.getElementById('stockActual').textContent = opt.dataset.stock;
+    document.getElementById('unidadMaterial').textContent = opt.dataset.unidad;
+    info.classList.remove('d-none');
+  } else {
+    info.classList.add('d-none');
+  }
+});
+</script>
+{% endblock %}

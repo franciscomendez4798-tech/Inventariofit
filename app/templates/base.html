@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}Inventario{% endblock %} — Sistema Universitario</title>
+
+  <!-- Google Fonts: Libre Baskerville (display) + Source Sans 3 (body) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Libre+Baskerville:wght@400;700&family=Source+Sans+3:wght@300;400;600;700&display=swap" rel="stylesheet">
+
+  <!-- Bootstrap 5 -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/css/bootstrap.min.css">
+  <!-- Bootstrap Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-icons/1.11.3/font/bootstrap-icons.min.css">
+
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/custom.css') }}">
+  {% block head_extra %}{% endblock %}
+</head>
+<body>
+
+{% if current_user.is_authenticated %}
+<!-- ══════════════════════════════════════════════════════════
+     SIDEBAR NAVEGACIÓN
+══════════════════════════════════════════════════════════ -->
+<div class="sidebar" id="sidebar">
+  <div class="sidebar-brand">
+    <img src="{{ url_for('static', filename='img/footer.png') }}"
+         alt="Facultad de Ingeniería" class="sidebar-brand-logo">
+    <div>
+      <div class="sidebar-brand-name">Fac. Ingeniería</div>
+      <div class="sidebar-brand-sub">Inventarios</div>
+    </div>
+  </div>
+
+  <nav class="sidebar-nav">
+    {% if current_user.es_admin %}
+    <!-- NAV SECRETARÍA ADMINISTRATIVA (solo admin) -->
+    <div class="nav-section-label">SECRETARÍA ADMINISTRATIVA</div>
+
+    <a href="{{ url_for('admin.dashboard') }}"
+       class="nav-link {% if request.endpoint == 'admin.dashboard' %}active{% endif %}">
+      <i class="bi bi-grid-1x2"></i> Dashboard
+    </a>
+    <a href="{{ url_for('admin.inventario') }}"
+       class="nav-link {% if 'inventario' in request.endpoint or 'material' in request.endpoint %}active{% endif %}">
+      <i class="bi bi-box-seam"></i> Inventario
+    </a>
+    <a href="{{ url_for('admin.pedidos') }}"
+       class="nav-link {% if 'pedido' in request.endpoint %}active{% endif %}">
+      <i class="bi bi-clipboard-check"></i> Pedidos
+      <span class="badge-nav" id="badge-pendientes"></span>
+    </a>
+    <a href="{{ url_for('admin.proveedores') }}"
+       class="nav-link {% if 'proveedor' in request.endpoint %}active{% endif %}">
+      <i class="bi bi-truck"></i> Proveedores
+    </a>
+    <a href="{{ url_for('admin.departamentos') }}"
+       class="nav-link {% if 'departamento' in request.endpoint %}active{% endif %}">
+      <i class="bi bi-diagram-3"></i> Departamentos
+    </a>
+    <a href="{{ url_for('admin.requisiciones') }}"
+       class="nav-link {% if 'requisicion' in request.endpoint %}active{% endif %}">
+      <i class="bi bi-file-earmark-text"></i> Requisiciones
+    </a>
+
+    <!-- NAV PAÑOL DE MANTENIMIENTO (visible solo para admin) -->
+    <div class="nav-section-label mt-4">PAÑOL DE MANTENIMIENTO</div>
+    <a href="{{ url_for('mantenimiento.panel') }}"
+       class="nav-link {% if request.endpoint == 'mantenimiento.panel' %}active{% endif %}">
+      <i class="bi bi-tools"></i> Panel pañol
+    </a>
+    <a href="{{ url_for('mantenimiento.stock') }}"
+       class="nav-link {% if request.endpoint == 'mantenimiento.stock' %}active{% endif %}">
+      <i class="bi bi-boxes"></i> Stock
+    </a>
+    <a href="{{ url_for('mantenimiento.pedidos_equipo') }}"
+       class="nav-link {% if 'pedidos_equipo' in request.endpoint or 'pedido_equipo' in request.endpoint %}active{% endif %}">
+      <i class="bi bi-cart3"></i> Pedidos de Equipo
+      <span class="badge-nav" id="badge-pedidos-equipo"></span>
+    </a>
+    <a href="{{ url_for('mantenimiento.personal') }}"
+       class="nav-link {% if 'personal' in request.endpoint or 'trabajador' in request.endpoint %}active{% endif %}">
+      <i class="bi bi-people"></i> Personal
+    </a>
+    <a href="{{ url_for('mantenimiento.auditoria') }}"
+       class="nav-link {% if request.endpoint in ('mantenimiento.auditoria','mantenimiento.stock_bitacora') %}active{% endif %}">
+      <i class="bi bi-journal-text"></i> Auditoría / Bitácora
+    </a>
+    <a href="{{ url_for('admin.ordenes_servicio_admin') }}"
+       class="nav-link {% if 'ordenes_servicio' in request.endpoint %}active{% endif %}">
+      <i class="bi bi-clipboard2-pulse"></i> Órdenes de Servicio
+    </a>
+
+    <!-- AUDITORIO FIT (solo admin) -->
+    <div class="nav-section-label mt-4">AUDITORIO FIT</div>
+    <a href="{{ url_for('admin.auditorio') }}"
+       class="nav-link {% if 'auditorio' in request.endpoint %}active{% endif %}">
+      <i class="bi bi-camera-video"></i> Reservas Auditorio
+    </a>
+    <a href="{{ url_for('admin.auditorio_historial') }}"
+       class="nav-link {% if 'auditorio_historial' in request.endpoint %}active{% endif %}">
+      <i class="bi bi-clock-history"></i> Historial
+    </a>
+
+    {% elif current_user.es_mantenimiento %}
+    <!-- NAV MANTENIMIENTO (pañol + solicitar material) -->
+    <div class="nav-section-label">PAÑOL DE MANTENIMIENTO</div>
+    <a href="{{ url_for('mantenimiento.panel') }}"
+       class="nav-link {% if request.endpoint == 'mantenimiento.panel' %}active{% endif %}">
+      <i class="bi bi-tools"></i> Panel pañol
+    </a>
+    <a href="{{ url_for('mantenimiento.stock') }}"
+       class="nav-link {% if request.endpoint == 'mantenimiento.stock' %}active{% endif %}">
+      <i class="bi bi-boxes"></i> Mi Stock
+    </a>
+    <a href="{{ url_for('mantenimiento.recepciones') }}"
+       class="nav-link {% if request.endpoint in ('mantenimiento.recepciones','mantenimiento.recepcion_form') %}active{% endif %}">
+      <i class="bi bi-box-arrow-in-down"></i> Recepciones
+    </a>
+    <a href="{{ url_for('mantenimiento.consumos') }}"
+       class="nav-link {% if request.endpoint in ('mantenimiento.consumos','mantenimiento.consumo_form') %}active{% endif %}">
+      <i class="bi bi-dash-circle"></i> Consumos
+    </a>
+    <a href="{{ url_for('mantenimiento.prestamos') }}"
+       class="nav-link {% if 'prestamo' in request.endpoint %}active{% endif %}">
+      <i class="bi bi-wrench-adjustable"></i> Préstamos
+    </a>
+    <a href="{{ url_for('mantenimiento.herramientas') }}"
+       class="nav-link {% if 'herramienta' in request.endpoint %}active{% endif %}">
+      <i class="bi bi-hammer"></i> Herramientas
+    </a>
+    <a href="{{ url_for('mantenimiento.personal') }}"
+       class="nav-link {% if 'personal' in request.endpoint or 'trabajador' in request.endpoint %}active{% endif %}">
+      <i class="bi bi-people"></i> Personal
+    </a>
+    <a href="{{ url_for('mantenimiento.auditoria') }}"
+       class="nav-link {% if request.endpoint in ('mantenimiento.auditoria','mantenimiento.stock_bitacora') %}active{% endif %}">
+      <i class="bi bi-journal-text"></i> Auditoría / Bitácora
+    </a>
+
+    <!-- AUDIOVISUAL -->
+    <div class="nav-section-label mt-4">AUDIOVISUAL</div>
+    <a href="{{ url_for('mantenimiento.audiovisual') }}"
+       class="nav-link {% if 'audiovisual' in request.endpoint %}active{% endif %}">
+      <i class="bi bi-camera-video"></i> Préstamo Audiovisual
+    </a>
+
+    <!-- ÓRDENES DE SERVICIO (mantenimiento) -->
+    <div class="nav-section-label mt-4">ÓRDENES DE SERVICIO</div>
+    <a href="{{ url_for('mantenimiento.ordenes_servicio') }}"
+       class="nav-link {% if 'ordenes_servicio' in request.endpoint or 'completar_orden' in request.endpoint or 'firmar_orden' in request.endpoint %}active{% endif %}">
+      <i class="bi bi-clipboard2-pulse"></i> Órdenes Recibidas
+    </a>
+    <a href="{{ url_for('mantenimiento.estadisticas_encuestas') }}"
+       class="nav-link {% if request.endpoint == 'mantenimiento.estadisticas_encuestas' %}active{% endif %}">
+      <i class="bi bi-bar-chart-line"></i> Estadísticas Encuestas
+    </a>
+    <a href="{{ url_for('mantenimiento.mi_firma_mant') }}"
+       class="nav-link {% if request.endpoint == 'mantenimiento.mi_firma_mant' %}active{% endif %}">
+      <i class="bi bi-pen"></i> Mi Firma Digital
+    </a>
+
+    <!-- SOLICITAR MATERIAL (como solicitante) -->
+    <div class="nav-section-label mt-4">ALMACÉN GENERAL</div>
+    <a href="{{ url_for('mantenimiento.solicitar_material') }}"
+       class="nav-link {% if request.endpoint in ('mantenimiento.solicitar_material','mantenimiento.nueva_requisicion_mant') %}active{% endif %}">
+      <i class="bi bi-cart-plus"></i> Solicitar Material
+    </a>
+    <a href="{{ url_for('mantenimiento.mis_requisiciones_mant') }}"
+       class="nav-link {% if request.endpoint == 'mantenimiento.mis_requisiciones_mant' %}active{% endif %}">
+      <i class="bi bi-file-earmark-text"></i> Mis Requisiciones
+    </a>
+
+    {% elif current_user.rol == 'solicitante' %}
+    <!-- NAV PERSONAL ADMINISTRATIVO -->
+    <div class="nav-section-label">Personal Administrativo</div>
+
+    <a href="{{ url_for('solicitante.panel') }}"
+       class="nav-link {% if request.endpoint == 'solicitante.panel' %}active{% endif %}">
+      <i class="bi bi-speedometer2"></i> Panel
+    </a>
+    <a href="{{ url_for('solicitante.catalogo') }}"
+       class="nav-link {% if request.endpoint == 'solicitante.catalogo' %}active{% endif %}">
+      <i class="bi bi-shop"></i> Catálogo
+    </a>
+    <a href="{{ url_for('solicitante.mis_pedidos') }}"
+       class="nav-link {% if request.endpoint == 'solicitante.mis_pedidos' %}active{% endif %}">
+      <i class="bi bi-receipt"></i> Mis pedidos
+    </a>
+    <a href="{{ url_for('solicitante.requisiciones') }}"
+       class="nav-link {% if 'requisicion' in request.endpoint %}active{% endif %}">
+      <i class="bi bi-file-earmark-text"></i> Requisiciones
+    </a>
+    <a href="{{ url_for('solicitante.mis_ordenes_servicio') }}"
+       class="nav-link {% if 'ordenes_servicio' in request.endpoint or 'solicitar_mantenimiento' in request.endpoint or 'encuesta' in request.endpoint %}active{% endif %}">
+      <i class="bi bi-clipboard2-pulse"></i> Servicios de Mant.
+    </a>
+    <a href="{{ url_for('solicitante.mi_firma') }}"
+       class="nav-link {% if request.endpoint == 'solicitante.mi_firma' %}active{% endif %}">
+      <i class="bi bi-pen"></i> Mi Firma
+    </a>
+    {% endif %}
+  </nav>
+
+  <!-- Usuario en sidebar footer -->
+  <div class="sidebar-footer">
+    <div class="sidebar-user">
+      <div class="sidebar-user-avatar">
+        {{ current_user.nombre_completo[0].upper() }}
+      </div>
+      <div class="sidebar-user-info">
+        <div class="sidebar-user-name">{{ current_user.nombre_completo.split()[0] }}</div>
+        <div class="sidebar-user-role">
+          {% if current_user.es_admin %}Administrador
+          {% elif current_user.es_mantenimiento %}Mantenimiento
+          {% else %}{{ current_user.departamento.codigo if current_user.departamento else '—' }}
+          {% endif %}
+        </div>
+      </div>
+      <a href="{{ url_for('auth.logout') }}" class="sidebar-logout" title="Cerrar sesión">
+        <i class="bi bi-box-arrow-right"></i>
+      </a>
+    </div>
+  </div>
+</div>
+
+<!-- Overlay móvil -->
+<div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
+
+<!-- ══════════════════════════════════════════════════════════
+     CONTENIDO PRINCIPAL
+══════════════════════════════════════════════════════════ -->
+<div class="main-content" id="mainContent">
+
+  <!-- Topbar -->
+  <header class="topbar">
+    <button class="topbar-toggle" onclick="toggleSidebar()" title="Menú">
+      <i class="bi bi-list"></i>
+    </button>
+    <div class="topbar-breadcrumb">
+      {% block breadcrumb %}{% endblock %}
+    </div>
+    <div class="topbar-actions">
+      {% block topbar_actions %}{% endblock %}
+    </div>
+  </header>
+
+  <!-- Alertas Flash -->
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+    <div class="flash-container">
+      {% for category, message in messages %}
+      <div class="alert alert-{{ category }} alert-dismissible fade show flash-alert" role="alert">
+        <i class="bi bi-{% if category == 'success' %}check-circle{% elif category == 'danger' %}exclamation-triangle{% elif category == 'warning' %}exclamation-circle{% else %}info-circle{% endif %} me-2"></i>
+        {{ message }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+  {% endwith %}
+
+  <!-- Página -->
+  <main class="page-body">
+    {% block content %}{% endblock %}
+  </main>
+
+</div><!-- /main-content -->
+
+{% else %}
+  {# Sin sidebar: pantalla de login #}
+  {% block content_public %}{% endblock %}
+{% endif %}
+
+<!-- Bootstrap JS -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/js/bootstrap.bundle.min.js"></script>
+
+<script>
+function toggleSidebar() {
+  document.getElementById('sidebar').classList.toggle('open');
+  document.getElementById('sidebarOverlay').classList.toggle('show');
+}
+
+// Cargar badge de pedidos pendientes (solo admin)
+{% if current_user.is_authenticated and current_user.es_admin %}
+fetch('/api/pedidos-pendientes')
+  .then(r => r.json())
+  .then(d => {
+    const b = document.getElementById('badge-pendientes');
+    if (b && d.count > 0) {
+      b.textContent = d.count;
+      b.style.display = 'inline-flex';
+    }
+  }).catch(() => {});
+{% endif %}
+</script>
+
+{% block scripts %}{% endblock %}
+</body>
+</html>

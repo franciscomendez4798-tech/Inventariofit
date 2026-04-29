@@ -1,0 +1,97 @@
+{# templates/admin/departamentos.html #}
+{% extends "base.html" %}
+{% block title %}Departamentos{% endblock %}
+
+{% block breadcrumb %}<strong>Departamentos</strong> — Gestión{% endblock %}
+
+{% block topbar_actions %}
+<a href="{{ url_for('admin.departamento_form') }}" class="btn btn-sm btn-primary">
+  <i class="bi bi-plus-lg me-1"></i>Nuevo departamento
+</a>
+{% endblock %}
+
+{% block content %}
+<h1 class="page-title">Departamentos</h1>
+<p class="page-subtitle">Gestiona los departamentos, sus categorías permitidas y cuentas de acceso.</p>
+
+{% if not departamentos %}
+<div class="text-center py-5 text-muted">
+  <i class="bi bi-diagram-3 fs-1 d-block mb-2"></i>
+  No hay departamentos registrados.
+  <a href="{{ url_for('admin.departamento_form') }}">Crear el primero.</a>
+</div>
+{% else %}
+
+<div class="row g-3">
+  {% for d in departamentos %}
+  <div class="col-12 col-md-6 col-xl-4">
+    <div class="card h-100 {{ 'opacity-50' if not d.activo }}">
+      <div class="card-body">
+        <div class="d-flex justify-content-between align-items-start mb-2">
+          <div>
+            <h6 class="fw-bold mb-0">{{ d.nombre }}</h6>
+            <span class="badge rounded-pill" 
+                  style="background:var(--color-primary-light);color:var(--color-primary);font-size:.7rem;font-weight:600">
+              {{ d.codigo }}
+            </span>
+          </div>
+          {% if not d.activo %}
+          <span class="badge bg-secondary">Inactivo</span>
+          {% endif %}
+        </div>
+
+        {% if d.descripcion %}
+        <p class="small text-muted mb-2">{{ d.descripcion|truncate(80) }}</p>
+        {% endif %}
+
+        <!-- Categorías -->
+        <div class="mb-2">
+          {% for cat in stats[d.id].categorias %}
+          <span class="badge bg-light text-dark me-1 mb-1" style="font-size:.68rem">
+            <i class="bi bi-tag-fill me-1" style="color:var(--color-primary)"></i>{{ cat }}
+          </span>
+          {% endfor %}
+        </div>
+
+        <!-- Stats rápidos -->
+        <div class="d-flex gap-3 mb-3 small">
+          <div>
+            <span class="fw-bold" style="color:var(--color-primary)">{{ stats[d.id].total_pedidos }}</span>
+            <span class="text-muted">pedidos</span>
+          </div>
+          <div>
+            <i class="bi bi-person-fill me-1 text-muted"></i>
+            {% if stats[d.id].encargado %}
+            <span class="text-muted">{{ stats[d.id].encargado.nombre_completo.split()[0] }}</span>
+            {% else %}
+            <span class="text-muted fst-italic">Sin encargado</span>
+            {% endif %}
+          </div>
+        </div>
+
+        <!-- Acciones -->
+        <div class="d-flex gap-2">
+          <a href="{{ url_for('admin.departamento_detalle', depto_id=d.id) }}" 
+             class="btn btn-sm btn-outline-primary flex-fill">
+            <i class="bi bi-bar-chart me-1"></i>Estadísticas
+          </a>
+          <a href="{{ url_for('admin.departamento_form', depto_id=d.id) }}" 
+             class="btn btn-sm btn-outline-secondary">
+            <i class="bi bi-pencil"></i>
+          </a>
+          {% if d.activo %}
+          <form method="POST" action="{{ url_for('admin.departamento_eliminar', depto_id=d.id) }}"
+                onsubmit="return confirm('¿Desactivar {{ d.nombre }}? Se desactivarán sus cuentas.')">
+            <button class="btn btn-sm btn-outline-danger" type="submit">
+              <i class="bi bi-trash"></i>
+            </button>
+          </form>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+{% endblock %}

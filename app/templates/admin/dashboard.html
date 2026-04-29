@@ -1,0 +1,91 @@
+{# templates/admin/dashboard.html #}
+{% extends "base.html" %}
+{% block title %}Dashboard{% endblock %}
+
+{% block breadcrumb %}
+  <strong>Dashboard</strong> — Vista general
+{% endblock %}
+
+{% block content %}
+<h1 class="page-title">Dashboard</h1>
+<p class="page-subtitle">Resumen de inventario y actividad reciente.</p>
+
+<!-- ── Stat cards ─────────────────────────────────────────────── -->
+<div class="row g-3 mb-4">
+  <div class="col-6 col-md-3">
+    <div class="stat-card">
+      <div class="stat-icon bordo"><i class="bi bi-box-seam"></i></div>
+      <div>
+        <div class="stat-value">{{ stats.total_materiales }}</div>
+        <div class="stat-label">Materiales</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="stat-card">
+      <div class="stat-icon dorado"><i class="bi bi-clipboard-check"></i></div>
+      <div>
+        <div class="stat-value">{{ stats.pedidos_pendientes }}</div>
+        <div class="stat-label">Pedidos pendientes</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="stat-card">
+      <div class="stat-icon verde"><i class="bi bi-receipt"></i></div>
+      <div>
+        <div class="stat-value">{{ stats.total_pedidos_hoy }}</div>
+        <div class="stat-label">Pedidos hoy</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="stat-card">
+      <div class="stat-icon rojo"><i class="bi bi-exclamation-triangle"></i></div>
+      <div>
+        <div class="stat-value">{{ stats.materiales_bajo_stock }}</div>
+        <div class="stat-label">Bajo stock</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Gráficas ───────────────────────────────────────────────── -->
+<div class="row g-3">
+  <div class="col-12 col-lg-7">
+    <div class="card h-100">
+      <div class="card-header">
+        <i class="bi bi-bar-chart me-2"></i>Entradas y Salidas — últimos 6 meses
+      </div>
+      <div class="card-body">
+        <canvas id="chartMovimientos" height="90"></canvas>
+      </div>
+    </div>
+  </div>
+  <div class="col-12 col-lg-5">
+    <div class="card h-100">
+      <div class="card-header">
+        <i class="bi bi-pie-chart me-2"></i>Consumo por departamento
+      </div>
+      <div class="card-body d-flex align-items-center justify-content-center">
+        <canvas id="chartDeptos" style="max-height:250px"></canvas>
+      </div>
+    </div>
+  </div>
+  <div class="col-12">
+    <div class="card">
+      <div class="card-header">
+        <i class="bi bi-sort-down me-2"></i>Materiales más solicitados
+      </div>
+      <div class="card-body">
+        <canvas id="chartMateriales" height="60"></canvas>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+{% endblock %}

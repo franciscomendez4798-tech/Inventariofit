@@ -1,0 +1,303 @@
+{% extends 'base.html' %}
+{% block title %}Estadísticas — {{ trabajador.nombre }}{% endblock %}
+{% block breadcrumb %}
+  <a href="{{ url_for('mantenimiento.personal') }}" class="text-muted text-decoration-none">Personal</a>
+  <span class="mx-2 text-muted">&rsaquo;</span>
+  <strong>{{ trabajador.nombre }}</strong>
+{% endblock %}
+
+{% block topbar_actions %}
+<div class="d-flex gap-2">
+  {% if tiene_historial %}
+  <a href="{{ url_for('mantenimiento.formato_pedido_trabajador', trab_id=trabajador.id) }}"
+     class="btn btn-sm btn-outline-success d-flex align-items-center gap-1">
+    <i class="bi bi-file-earmark-excel"></i> Formato Requisición
+  </a>
+  <a href="{{ url_for('mantenimiento.formato_salida_trabajador', trab_id=trabajador.id) }}"
+     class="btn btn-sm btn-outline-secondary d-flex align-items-center gap-1">
+    <i class="bi bi-file-earmark-excel"></i> Formato Salida
+  </a>
+  {% else %}
+  <button class="btn btn-sm btn-outline-secondary d-flex align-items-center gap-1" disabled
+          title="Los formatos estarán disponibles cuando se registren entregas de material.">
+    <i class="bi bi-file-earmark-excel"></i> Formatos
+    <span class="badge bg-secondary ms-1">Sin historial</span>
+  </button>
+  {% endif %}
+  <a href="{{ url_for('mantenimiento.pedido_equipo_form') }}"
+     class="btn btn-sm btn-primary d-flex align-items-center gap-1">
+    <i class="bi bi-cart-plus"></i> Nuevo Pedido de Equipo
+  </a>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="animate-fade-in">
+
+  {# ── Aviso si no hay historial de entregas ─────────────────────────────── #}
+  {% if not tiene_historial %}
+  <div class="alert alert-info border-0 d-flex align-items-center gap-3 mb-4 animate-fade-in" role="alert"
+       style="background:rgba(13,110,253,.08);border-left:4px solid #0d6efd!important;">
+    <i class="bi bi-info-circle-fill fs-4 text-primary"></i>
+    <div>
+      <strong>Estadísticas pendientes de datos.</strong>
+      Las estadísticas de consumos y el gasto estimado estarán disponibles una vez que se registren
+      <strong>salidas de material del stock</strong> asignadas a este trabajador.
+      Los formatos de requisición y salida también se habilitarán en ese momento.
+    </div>
+  </div>
+  {% endif %}
+
+  {# ── Encabezado del trabajador ─────────────────────────────────────────── #}
+  <div class="d-flex align-items-center gap-3 mb-5">
+    <div class="rounded-circle d-flex align-items-center justify-content-center fw-bold text-white fs-3"
+         style="width:64px;height:64px;min-width:64px;
+                background:linear-gradient(135deg,#8B1A1A,#C41E2A);">
+      {{ trabajador.nombre[0]|upper }}
+    </div>
+    <div>
+      <h1 class="h3 fw-bold text-dark mb-0">{{ trabajador.nombre }}</h1>
+      <span class="text-muted">{{ trabajador.cargo }}</span>
+      {% if trabajador.activo %}
+        <span class="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25 rounded-pill ms-2 px-2">Activo</span>
+      {% else %}
+        <span class="badge bg-secondary bg-opacity-10 text-secondary border border-secondary border-opacity-25 rounded-pill ms-2 px-2">Inactivo</span>
+      {% endif %}
+    </div>
+  </div>
+
+  {# ── KPIs ─────────────────────────────────────────────────────────────── #}
+  <div class="row g-4 mb-5">
+    <div class="col-6 col-md-3 animate-fade-in delay-1">
+      <div class="premium-card">
+        <div class="premium-stat-card">
+          <div class="stat-icon-premium gradient-bordo"><i class="bi bi-wrench-adjustable"></i></div>
+          <div>
+            <div class="premium-stat-value">{{ prestamos_activos }}</div>
+            <div class="premium-stat-label">Préstamos activos</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3 animate-fade-in delay-2">
+      <div class="premium-card">
+        <div class="premium-stat-card">
+          <div class="stat-icon-premium gradient-dark"><i class="bi bi-check-circle"></i></div>
+          <div>
+            <div class="premium-stat-value">{{ prestamos_devueltos }}</div>
+            <div class="premium-stat-label">Herramientas devueltas</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3 animate-fade-in delay-3">
+      <div class="premium-card">
+        <div class="premium-stat-card">
+          <div class="stat-icon-premium" style="background:linear-gradient(135deg,#fd7e14,#ffc107)">
+            <i class="bi bi-dash-circle"></i>
+          </div>
+          <div>
+            <div class="premium-stat-value">{{ num_consumos }}</div>
+            <div class="premium-stat-label">Consumos atribuidos</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    {% if current_user.es_admin %}
+    <div class="col-6 col-md-3 animate-fade-in delay-4">
+      <div class="premium-card">
+        <div class="premium-stat-card">
+          <div class="stat-icon-premium gradient-dorado"><i class="bi bi-currency-dollar"></i></div>
+          <div>
+            <div class="premium-stat-value text-warning">${{ '{:,.2f}'.format(gasto_total) }}</div>
+            <div class="premium-stat-label">Gasto estimado total</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    {% endif %}
+  </div>
+
+  {# ── Desglose del gasto (solo admin) + Pedidos de equipo ─────────────── #}
+  <div class="row g-4 mb-5">
+    {% if current_user.es_admin %}
+    <div class="col-md-6 animate-fade-in delay-2">
+      <div class="premium-card h-100">
+        <div class="p-4 border-bottom d-flex align-items-center gap-2">
+          <i class="bi bi-bar-chart-fill text-danger"></i>
+          <h6 class="fw-bold mb-0">Desglose del gasto estimado</h6>
+        </div>
+        <div class="p-4">
+          <div class="mb-3">
+            <div class="d-flex justify-content-between small text-muted mb-1">
+              <span>Préstamos de herramientas</span>
+              <span class="fw-semibold text-dark">${{ '{:,.2f}'.format(gasto_prestamos) }}</span>
+            </div>
+            {% set pct_p = ((gasto_prestamos / gasto_total * 100) | round(1)) if gasto_total > 0 else 0 %}
+            <div class="progress" style="height:8px">
+              <div class="progress-bar bg-danger" style="width:{{ pct_p }}%"></div>
+            </div>
+          </div>
+          <div>
+            <div class="d-flex justify-content-between small text-muted mb-1">
+              <span>Consumos directos</span>
+              <span class="fw-semibold text-dark">${{ '{:,.2f}'.format(gasto_consumos) }}</span>
+            </div>
+            {% set pct_c = ((gasto_consumos / gasto_total * 100) | round(1)) if gasto_total > 0 else 0 %}
+            <div class="progress" style="height:8px">
+              <div class="progress-bar bg-warning" style="width:{{ pct_c }}%"></div>
+            </div>
+          </div>
+          <hr class="my-3">
+          <div class="d-flex justify-content-between fw-bold">
+            <span>Total estimado</span>
+            <span class="text-warning">${{ '{:,.2f}'.format(gasto_total) }}</span>
+          </div>
+          <p class="small text-muted mt-2 mb-0">
+            <i class="bi bi-info-circle me-1"></i>
+            Basado en precio unitario de catálogo × cantidad.
+          </p>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-6 animate-fade-in delay-3">
+    {% else %}
+    <div class="col-md-12 animate-fade-in delay-2">
+    {% endif %}
+      <div class="premium-card h-100">
+        <div class="p-4 border-bottom d-flex align-items-center gap-2">
+          <i class="bi bi-cart3 text-primary"></i>
+          <h6 class="fw-bold mb-0">Pedidos de equipo al administrador</h6>
+          <span class="badge bg-primary rounded-pill ms-auto">{{ pedidos_equipo|length }}</span>
+        </div>
+        <div class="p-0">
+          {% if pedidos_equipo %}
+          <ul class="list-group list-group-flush">
+            {% for pe in pedidos_equipo[:6] %}
+            <li class="list-group-item d-flex align-items-center justify-content-between py-2 px-4">
+              <div>
+                <div class="fw-semibold small">{{ pe.folio }}</div>
+                <div class="text-muted" style="font-size:.8rem">{{ pe.descripcion[:60] }}{% if pe.descripcion|length > 60 %}…{% endif %}</div>
+              </div>
+              <div class="text-end">
+                {% if pe.estado == 'pendiente' %}
+                  <span class="badge bg-warning text-dark rounded-pill">Pendiente</span>
+                {% elif pe.estado == 'aprobado' %}
+                  <span class="badge bg-success rounded-pill">Aprobado</span>
+                {% elif pe.estado == 'rechazado' %}
+                  <span class="badge bg-danger rounded-pill">Rechazado</span>
+                {% else %}
+                  <span class="badge bg-info rounded-pill">Entregado</span>
+                {% endif %}
+                <div class="text-muted mt-1" style="font-size:.75rem">{{ pe.fecha_pedido.strftime('%d/%m/%Y') }}</div>
+              </div>
+            </li>
+            {% endfor %}
+          </ul>
+          {% else %}
+          <div class="p-4 text-center text-muted">
+            <i class="bi bi-cart-x fs-3 d-block mb-2 text-light"></i>
+            Sin pedidos de equipo registrados.
+          </div>
+          {% endif %}
+        </div>
+        {% if pedidos_equipo|length > 6 %}
+        <div class="p-3 border-top text-center">
+          <a href="{{ url_for('mantenimiento.pedidos_equipo') }}?q={{ trabajador.nombre }}"
+             class="small text-muted">Ver todos ({{ pedidos_equipo|length }})</a>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  {# ── Historial de préstamos ────────────────────────────────────────────── #}
+  <h2 class="h5 fw-bold text-dark mb-3 animate-fade-in">Historial de préstamos</h2>
+  <div class="premium-card mb-5 animate-fade-in delay-2">
+    <div class="card-body p-0">
+      <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+          <thead class="bg-light text-muted small text-uppercase fw-semibold" style="letter-spacing:.5px">
+            <tr>
+              <th class="border-0 ps-4 py-3">Herramienta</th>
+              <th class="border-0 py-3">Fecha préstamo</th>
+              <th class="border-0 py-3">Devolución</th>
+              <th class="border-0 py-3">Estado</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for p in historial_prestamos %}
+            <tr>
+              <td class="ps-4 fw-semibold">{{ p.herramienta.nombre }}</td>
+              <td class="small text-muted">{{ p.fecha_prestamo.strftime('%d/%m/%Y %H:%M') }}</td>
+              <td class="small text-muted">
+                {% if p.fecha_devolucion %}{{ p.fecha_devolucion.strftime('%d/%m/%Y') }}
+                {% else %}<span class="text-warning">Pendiente</span>{% endif %}
+              </td>
+              <td>
+                {% if p.estado == 'devuelto' %}
+                  <span class="badge bg-success bg-opacity-10 text-success rounded-pill px-3 py-1">Devuelto</span>
+                {% else %}
+                  <span class="badge bg-warning bg-opacity-10 text-warning rounded-pill px-3 py-1">Prestado</span>
+                {% endif %}
+              </td>
+            </tr>
+            {% else %}
+            <tr><td colspan="6" class="text-center py-4 text-muted">Sin préstamos registrados.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  {# ── Consumos atribuidos ──────────────────────────────────────────────── #}
+  <h2 class="h5 fw-bold text-dark mb-3 animate-fade-in">Consumos atribuidos</h2>
+  <div class="premium-card mb-5 animate-fade-in delay-2">
+    <div class="card-body p-0">
+      <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+          <thead class="bg-light text-muted small text-uppercase fw-semibold" style="letter-spacing:.5px">
+            <tr>
+              <th class="border-0 ps-4 py-3">Material</th>
+              <th class="border-0 py-3 text-center">Cantidad</th>
+              <th class="border-0 py-3">Fecha</th>
+              <th class="border-0 py-3">Motivo</th>
+              {% if current_user.es_admin %}
+              <th class="border-0 py-3 text-end pe-4">Valor est.</th>
+              {% endif %}
+            </tr>
+          </thead>
+          <tbody>
+            {% for c in consumos_attr %}
+            <tr>
+              <td class="ps-4 fw-semibold">{{ c.item.nombre if c.item else '—' }}</td>
+              <td class="text-center text-warning fw-bold">-{{ c.cantidad }} {{ c.item.unidad_medida if c.item else '' }}</td>
+              <td class="small text-muted">{{ c.fecha.strftime('%d/%m/%Y %H:%M') }}</td>
+              <td class="small text-muted">{{ c.motivo or '—' }}</td>
+              {% if current_user.es_admin %}
+              <td class="text-end pe-4 small fw-semibold">
+                {% if c.item and c.item.precio_ref %}
+                  ${{ '{:,.2f}'.format(c.item.precio_ref * c.cantidad) }}
+                {% else %}—{% endif %}
+              </td>
+              {% endif %}
+            </tr>
+            {% else %}
+            <tr><td colspan="5" class="text-center py-4 text-muted">
+              {% if tiene_historial %}
+                Sin consumos atribuidos a este trabajador.
+              {% else %}
+                <i class="bi bi-hourglass-split me-1"></i>
+                Aún no se han registrado entregas de material. Los consumos aparecerán aquí cuando se registren salidas de stock asignadas a este trabajador.
+              {% endif %}
+            </td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+</div>
+{% endblock %}

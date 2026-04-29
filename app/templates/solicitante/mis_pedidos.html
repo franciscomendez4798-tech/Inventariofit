@@ -1,0 +1,78 @@
+{# templates/solicitante/mis_pedidos.html #}
+{% extends "base.html" %}
+{% block title %}Mis Pedidos{% endblock %}
+
+{% block breadcrumb %}<strong>Mis pedidos</strong>{% endblock %}
+
+{% block content %}
+<h1 class="page-title">Mis Pedidos</h1>
+<p class="page-subtitle">Historial y estado de todas tus solicitudes.</p>
+
+{% if not pedidos %}
+<div class="text-center py-5 text-muted">
+  <i class="bi bi-receipt fs-1 d-block mb-2"></i>
+  Aún no tienes pedidos.
+  <a href="{{ url_for('solicitante.catalogo') }}">Ir al catálogo.</a>
+</div>
+{% else %}
+
+<div class="row g-3">
+  {% for p in pedidos %}
+  <div class="col-12">
+    <div class="card">
+      <div class="card-body">
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+          <div>
+            <span class="fw-bold font-monospace">{{ p.folio }}</span>
+            <span class="text-muted small ms-2">
+              {{ p.fecha_solicitud.strftime('%d/%m/%Y %H:%M') }}
+            </span>
+          </div>
+          <span class="badge-estado estado-{{ p.estado }}">{{ p.estado.replace('_',' ') }}</span>
+        </div>
+
+        <div class="table-responsive">
+          <table class="table table-sm mb-0">
+            <thead>
+              <tr>
+                <th>Material</th>
+                <th class="text-center">Solicitado</th>
+                <th class="text-center">Aprobado</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for d in p.detalles %}
+              <tr>
+                <td>{{ d.material.nombre }}
+                  <small class="text-muted">/ {{ d.material.unidad_medida }}</small>
+                </td>
+                <td class="text-center">{{ d.cantidad_solicitada }}</td>
+                <td class="text-center">
+                  {% if d.cantidad_aprobada is not none %}
+                    <span class="{% if d.cantidad_aprobada < d.cantidad_solicitada %}text-warning fw-bold{% else %}text-success fw-bold{% endif %}">
+                      {{ d.cantidad_aprobada }}
+                    </span>
+                  {% else %}
+                    <span class="text-muted">—</span>
+                  {% endif %}
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+
+        {% if p.notas_admin %}
+        <div class="mt-2 p-2 rounded small"
+             style="background:var(--color-surface-2);color:var(--color-text-2)">
+          <i class="bi bi-chat-left-text me-1"></i>
+          <strong>Nota del administrador:</strong> {{ p.notas_admin }}
+        </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+{% endblock %}

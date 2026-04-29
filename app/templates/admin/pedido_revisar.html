@@ -1,0 +1,189 @@
+{# templates/admin/pedido_revisar.html #}
+{% extends "base.html" %}
+{% block title %}Revisar {{ pedido.folio }}{% endblock %}
+
+{% block breadcrumb %}
+  <a href="{{ url_for('admin.pedidos') }}" class="text-decoration-none text-muted">Pedidos</a>
+  &rsaquo; <strong>{{ pedido.folio }}</strong>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-start mb-4 flex-wrap gap-2">
+  <div>
+    <h1 class="page-title mb-1">
+      Pedido <span class="font-monospace">{{ pedido.folio }}</span>
+    </h1>
+    <div class="d-flex align-items-center gap-2 flex-wrap">
+      <span class="badge-estado estado-{{ pedido.estado }}">{{ pedido.estado.replace('_',' ') }}</span>
+      <span class="text-muted small">
+        <i class="bi bi-person me-1"></i>{{ pedido.solicitante.nombre_completo }}
+        &bull; {{ pedido.departamento.nombre }}
+        &bull; {{ pedido.fecha_solicitud.strftime('%d/%m/%Y %H:%M') }}
+      </span>
+    </div>
+  </div>
+  <a href="{{ url_for('admin.pedidos') }}" class="btn btn-outline-secondary btn-sm">
+    ← Volver
+  </a>
+</div>
+
+{% if pedido.estado in ('pendiente', 'en_revision', 'modificado') %}
+<form method="POST">
+
+  <!-- ── Tabla principal de ítems ──────────────────────────────────────── -->
+  <div class="card mb-4">
+    <div class="card-header">
+      <i class="bi bi-list-ul me-2"></i>Artículos solicitados
+    </div>
+    <div class="table-responsive">
+      <table class="table align-middle mb-0">
+        <thead>
+          <tr>
+            <th style="min-width:200px">Material</th>
+            <th class="text-center">Solicitado</th>
+            <th class="text-center" style="min-width:120px">A aprobar</th>
+            <th class="text-center">Stock</th>
+            <th style="min-width:260px">
+              <i class="bi bi-lightning-charge text-warning me-1"></i>Historial del departamento
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for detalle in pedido.detalles %}
+          {% set mat = detalle.material %}
+          {% set hist = historial_consumo.get(detalle.id_material) %}
+          <tr>
+            <!-- Material -->
+            <td>
+              <div class="fw-semibold">{{ mat.nombre }}</div>
+              <small class="text-muted">{{ mat.unidad_medida }} &bull; {{ mat.categoria.nombre }}</small>
+            </td>
+
+            <!-- Cant. solicitada -->
+            <td class="text-center">
+              <span class="badge bg-primary fs-6 px-3">{{ detalle.cantidad_solicitada }}</span>
+            </td>
+
+            <!-- Cant. a aprobar (editable) -->
+            <td class="text-center">
+              {% if mat.stock_actual == 0 %}
+                <span class="badge bg-danger">Sin stock</span>
+                <input type="hidden" name="cant_aprobada_{{ detalle.id }}" value="0">
+              {% else %}
+                <input type="number"
+                       name="cant_aprobada_{{ detalle.id }}"
+                       value="{{ detalle.cantidad_aprobada if detalle.cantidad_aprobada is not none else detalle.cantidad_solicitada }}"
+                       min="0" max="{{ mat.stock_actual }}"
+                       class="form-control form-control-sm text-center fw-semibold"
+                       style="width:85px;margin:auto">
+              {% endif %}
+            </td>
+
+            <!-- Stock con indicador visual -->
+            <td class="text-center">
+              {% if mat.bajo_stock %}
+                <span class="fw-bold" style="color:var(--color-danger)">{{ mat.stock_actual }} ⚠</span>
+                <br><small class="text-muted" style="font-size:.68rem">mín. {{ mat.stock_minimo }}</small>
+              {% else %}
+                <span class="fw-semibold" style="color:var(--color-success)">{{ mat.stock_actual }}</span>
+              {% endif %}
+            </td>
+
+            <!-- Alerta inteligente -->
+            <td>
+              {% if hist %}
+              <div class="alert-historial">
+                <i class="bi bi-clock-history me-1"></i>
+                <strong>{{ pedido.departamento.codigo }}</strong> pidió
+                <strong>{{ hist.cantidad }}</strong> {{ mat.unidad_medida }}
+                hace <strong>{{ hist.dias }} día{{ 's' if hist.dias != 1 }}</strong>
+                <span class="text-muted">({{ hist.folio }})</span>
+              </div>
+              {% else %}
+                <span class="text-muted small">Sin antecedentes</span>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ── Notas del solicitante ────────────────────────────────────────── -->
+  {% if pedido.notas_solicitante %}
+  <div class="card mb-4">
+    <div class="card-body">
+      <p class="fw-semibold mb-1 small text-muted text-uppercase" style="letter-spacing:.06em">
+        Notas del solicitante
+      </p>
+      <p class="mb-0">{{ pedido.notas_solicitante }}</p>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- ── Notas del admin ──────────────────────────────────────────────── -->
+  <div class="mb-4">
+    <label for="notas_admin" class="form-label">
+      Notas / justificación del administrador
+    </label>
+    <textarea name="notas_admin" id="notas_admin" class="form-control" rows="3"
+              placeholder="Ej. Se ajusta cantidad por restricción de stock. Se aprueba parcialmente.">{{ pedido.notas_admin or '' }}</textarea>
+  </div>
+
+  <!-- ── Acciones ─────────────────────────────────────────────────────── -->
+  <div class="d-flex gap-3 flex-wrap">
+    <button type="submit" name="accion" value="aprobar"
+            class="btn btn-success btn-lg px-5">
+      <i class="bi bi-check2-circle me-2"></i>Aprobar y descontar stock
+    </button>
+    <button type="submit" name="accion" value="rechazar"
+            class="btn btn-danger btn-lg px-4"
+            onclick="return confirm('¿Confirma el rechazo de este pedido?')">
+      <i class="bi bi-x-circle me-2"></i>Rechazar
+    </button>
+  </div>
+
+</form>
+
+{% else %}
+<!-- Vista de solo lectura para pedidos ya resueltos -->
+<div class="card mb-4">
+  <div class="card-body">
+    <div class="table-responsive">
+      <table class="table mb-0">
+        <thead>
+          <tr>
+            <th>Material</th>
+            <th class="text-center">Solicitado</th>
+            <th class="text-center">Aprobado</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for d in pedido.detalles %}
+          <tr>
+            <td>{{ d.material.nombre }}</td>
+            <td class="text-center">{{ d.cantidad_solicitada }}</td>
+            <td class="text-center">
+              {% if d.cantidad_aprobada is not none %}
+                {{ d.cantidad_aprobada }}
+              {% else %}—{% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% if pedido.notas_admin %}
+<div class="card">
+  <div class="card-body">
+    <p class="fw-semibold mb-1 text-muted small text-uppercase">Notas del administrador</p>
+    <p class="mb-0">{{ pedido.notas_admin }}</p>
+  </div>
+</div>
+{% endif %}
+{% endif %}
+
+{% endblock %}

@@ -1,0 +1,155 @@
+{# templates/admin/inventario.html #}
+{% extends "base.html" %}
+{% block title %}Inventario{% endblock %}
+
+{% block breadcrumb %}<strong>Inventario</strong> — Materiales{% endblock %}
+
+{% block topbar_actions %}
+  <a href="{{ url_for('admin.material_form') }}" class="btn btn-primary btn-sm">
+    <i class="bi bi-plus-lg me-1"></i>Nuevo material
+  </a>
+{% endblock %}
+
+{% block content %}
+<h1 class="page-title">Inventario de Materiales</h1>
+<p class="page-subtitle">{{ materiales|length }} artículos registrados.</p>
+
+<!-- Filtro rápido -->
+<div class="card mb-3">
+  <div class="card-body py-2">
+    <div class="row g-2 align-items-center">
+      <div class="col-md-4">
+        <input type="text" id="filtroTabla" class="form-control form-control-sm"
+               placeholder="🔍  Buscar por nombre, categoría…">
+      </div>
+      <div class="col-auto ms-auto">
+        <span class="badge" style="background:var(--color-danger-bg);color:var(--color-danger);padding:6px 10px;">
+          <i class="bi bi-exclamation-triangle me-1"></i>
+          {{ materiales|selectattr('bajo_stock')|list|length }} bajo stock mínimo
+        </span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="table-responsive">
+    <table class="table mb-0" id="tablaInventario">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Material</th>
+          <th>Categoría</th>
+          <th class="text-center">Stock</th>
+          <th class="text-center">Mínimo</th>
+          <th>Precio unit.</th>
+          <th class="text-center">Visible</th>
+          <th class="text-center">Acciones</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for m in materiales %}
+        <tr class="{% if m.bajo_stock %}table-warning{% endif %}">
+          <td class="text-muted small">{{ m.id }}</td>
+          <td>
+            <div class="fw-semibold">{{ m.nombre }}</div>
+            <small class="text-muted">{{ m.unidad_medida }}</small>
+          </td>
+          <td><span class="badge bg-light text-dark border">{{ m.categoria.nombre }}</span></td>
+          <td class="text-center">
+            {% if m.bajo_stock %}
+              <span class="fw-bold" style="color:var(--color-danger)">{{ m.stock_actual }} ⚠</span>
+            {% else %}
+              <span class="fw-semibold" style="color:var(--color-success)">{{ m.stock_actual }}</span>
+            {% endif %}
+          </td>
+          <td class="text-center text-muted small">{{ m.stock_minimo }}</td>
+          <td>${{ "%.2f"|format(m.precio_unitario or 0) }}</td>
+          <td class="text-center">
+            <form method="POST" action="{{ url_for('admin.toggle_publicado', mat_id=m.id) }}"
+                  style="display:inline">
+              <button type="submit" class="btn btn-sm {% if m.publicado %}btn-success{% else %}btn-outline-secondary{% endif %}"
+                      title="{{ 'Publicado — clic para ocultar' if m.publicado else 'Oculto — clic para publicar' }}">
+                <i class="bi bi-{% if m.publicado %}eye{% else %}eye-slash{% endif %}"></i>
+              </button>
+            </form>
+          </td>
+          <td class="text-center">
+            <div class="d-flex gap-1 justify-content-center">
+              <a href="{{ url_for('admin.material_form', mat_id=m.id) }}"
+                 class="btn btn-sm btn-outline-primary" title="Editar">
+                <i class="bi bi-pencil"></i>
+              </a>
+              <!-- Modal entrada de stock -->
+              <button class="btn btn-sm btn-outline-success"
+                      data-bs-toggle="modal"
+                      data-bs-target="#modalEntrada"
+                      data-mat-id="{{ m.id }}"
+                      data-mat-nombre="{{ m.nombre }}"
+                      title="Entrada de stock">
+                <i class="bi bi-plus-circle"></i>
+              </button>
+            </div>
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="8" class="text-center text-muted py-5">
+          No hay materiales registrados.
+          <a href="{{ url_for('admin.material_form') }}">Crear el primero.</a>
+        </td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Modal: Entrada de stock -->
+<div class="modal fade" id="modalEntrada" tabindex="-1">
+  <div class="modal-dialog modal-sm">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Entrada de stock</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <form method="POST" id="formEntrada">
+        <div class="modal-body">
+          <p class="text-muted small mb-3" id="modalMatNombre"></p>
+          <div class="mb-3">
+            <label class="form-label">Cantidad a agregar</label>
+            <input type="number" name="cantidad" class="form-control" min="1" required>
+          </div>
+          <div class="mb-2">
+            <label class="form-label">Motivo</label>
+            <input type="text" name="motivo" class="form-control"
+                   placeholder="Compra, donación, ajuste…">
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
+          <button type="submit" class="btn btn-success btn-sm">Registrar entrada</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Filtro de búsqueda en tabla
+document.getElementById('filtroTabla').addEventListener('input', function() {
+  const q = this.value.toLowerCase();
+  document.querySelectorAll('#tablaInventario tbody tr').forEach(tr => {
+    tr.style.display = tr.textContent.toLowerCase().includes(q) ? '' : 'none';
+  });
+});
+
+// Setear acción del modal de entrada
+document.getElementById('modalEntrada').addEventListener('show.bs.modal', function(e) {
+  const btn = e.relatedTarget;
+  document.getElementById('formEntrada').action =
+    `/admin/material/${btn.dataset.matId}/entrada-stock`;
+  document.getElementById('modalMatNombre').textContent = btn.dataset.matNombre;
+});
+</script>
+{% endblock %}

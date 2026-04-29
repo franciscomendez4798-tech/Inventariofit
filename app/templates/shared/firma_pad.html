@@ -1,0 +1,66 @@
+{# Componente reutilizable: pad de firma digital con signature_pad.js #}
+<div class="premium-card mb-4">
+  <div class="card-body p-4">
+    <h6 class="fw-bold mb-3"><i class="bi bi-pen me-2"></i>Dibuja tu firma</h6>
+    <div class="border rounded bg-white d-flex align-items-center justify-content-center"
+         style="height:140px; cursor:crosshair; touch-action:none;">
+      <canvas id="firmaCanvas" width="600" height="130"
+              style="width:100%; max-width:600px; height:130px;"></canvas>
+    </div>
+    <div class="d-flex gap-2 mt-2">
+      <button type="button" class="btn btn-sm btn-outline-secondary" id="btnLimpiar">
+        <i class="bi bi-eraser me-1"></i>Limpiar
+      </button>
+      <small class="text-muted align-self-center ms-auto">Usa el mouse o tu dedo para firmar</small>
+    </div>
+    <input type="hidden" name="firma_b64" id="firma_b64">
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/signature_pad@4.1.7/dist/signature_pad.umd.min.js"></script>
+<script>
+(function () {
+  const canvas = document.getElementById('firmaCanvas');
+  const hiddenInput = document.getElementById('firma_b64');
+  const pad = new SignaturePad(canvas, {
+    backgroundColor: 'rgb(255,255,255)',
+    penColor: 'rgb(0,0,150)',
+    minWidth: 1.5,
+    maxWidth: 3,
+  });
+
+  function resizeCanvas() {
+    const ratio = Math.max(window.devicePixelRatio || 1, 1);
+    const rect  = canvas.getBoundingClientRect();
+    const data  = pad.toData();
+    canvas.width  = rect.width  * ratio;
+    canvas.height = rect.height * ratio;
+    canvas.getContext('2d').scale(ratio, ratio);
+    pad.clear();
+    pad.fromData(data);
+  }
+  window.addEventListener('resize', resizeCanvas);
+  resizeCanvas();
+
+  document.getElementById('btnLimpiar').addEventListener('click', () => pad.clear());
+
+  // Antes de submit: poner base64 en el hidden input
+  const form = canvas.closest('form');
+  if (form) {
+    form.addEventListener('submit', function (e) {
+      if (pad.isEmpty()) {
+        e.preventDefault();
+        alert('Por favor dibuja tu firma antes de guardar.');
+        return;
+      }
+      hiddenInput.value = pad.toDataURL('image/png');
+    });
+  }
+
+  // Si ya hay firma guardada (edición), pre-cargarla
+  const existente = hiddenInput.dataset.existente;
+  if (existente) {
+    pad.fromDataURL(existente);
+  }
+}());
+</script>

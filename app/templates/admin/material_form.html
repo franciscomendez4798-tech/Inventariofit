@@ -1,0 +1,143 @@
+{# templates/admin/material_form.html #}
+{% extends "base.html" %}
+{% set es_nuevo = not material.id %}
+{% block title %}{{ 'Nuevo material' if es_nuevo else 'Editar ' + material.nombre }}{% endblock %}
+
+{% block breadcrumb %}
+  <a href="{{ url_for('admin.inventario') }}" class="text-decoration-none text-muted">Inventario</a>
+  &rsaquo; <strong>{{ 'Nuevo material' if es_nuevo else 'Editar material' }}</strong>
+{% endblock %}
+
+{% block content %}
+<h1 class="page-title">{{ 'Nuevo material' if es_nuevo else 'Editar material' }}</h1>
+<p class="page-subtitle">{{ 'Registra un nuevo artículo en el inventario.' if es_nuevo else 'Modifica los datos del material.' }}</p>
+
+<div class="row">
+  <div class="col-lg-7">
+    <div class="card">
+      <div class="card-body">
+        <form method="POST" enctype="multipart/form-data">
+          <div class="row g-3">
+
+            <div class="col-12">
+              <label class="form-label">Nombre del material *</label>
+              <input type="text" name="nombre" class="form-control"
+                     value="{{ material.nombre or '' }}" required
+                     placeholder="Ej. Resma de papel bond 75g">
+            </div>
+
+            <div class="col-12">
+              <label class="form-label">Descripción</label>
+              <textarea name="descripcion" class="form-control" rows="2"
+                        placeholder="Características, marca, presentación…">{{ material.descripcion or '' }}</textarea>
+            </div>
+
+            <div class="col-md-6">
+              <label class="form-label">Categoría *</label>
+              <select name="id_categoria" class="form-select" required>
+                <option value="">— Selecciona —</option>
+                {% for cat in categorias %}
+                <option value="{{ cat.id }}"
+                  {{ 'selected' if material.id_categoria == cat.id }}>
+                  {{ cat.nombre }}
+                </option>
+                {% endfor %}
+              </select>
+            </div>
+
+            <div class="col-md-6">
+              <label class="form-label">Unidad de medida *</label>
+              <input type="text" name="unidad_medida" class="form-control"
+                     value="{{ material.unidad_medida or '' }}" required
+                     placeholder="pieza, caja, litro, resma…">
+            </div>
+
+            <div class="col-md-4">
+              <label class="form-label">Stock actual</label>
+              <input type="number" name="stock_actual" class="form-control"
+                     value="{{ material.stock_actual or 0 }}" min="0">
+            </div>
+
+            <div class="col-md-4">
+              <label class="form-label">Stock mínimo</label>
+              <input type="number" name="stock_minimo" class="form-control"
+                     value="{{ material.stock_minimo or 5 }}" min="0">
+              <div class="form-text">Umbral de alerta.</div>
+            </div>
+
+            <div class="col-md-4">
+              <label class="form-label">Precio unitario ($)</label>
+              <input type="number" name="precio_unitario" class="form-control"
+                     value="{{ material.precio_unitario or 0 }}"
+                     min="0" step="0.01">
+            </div>
+
+            <div class="col-12">
+              <label class="form-label">Proveedor preferente</label>
+              <select name="id_proveedor" class="form-select">
+                <option value="">— Sin proveedor asignado —</option>
+                {% for p in proveedores %}
+                <option value="{{ p.id }}"
+                  {{ 'selected' if material.id_proveedor == p.id }}>
+                  {{ p.nombre }}
+                </option>
+                {% endfor %}
+              </select>
+            </div>
+
+            <!-- ── Imagen ilustrativa ─────────────────────────── -->
+            <div class="col-12">
+              <label class="form-label">
+                <i class="bi bi-image me-1"></i>Imagen ilustrativa del producto
+              </label>
+              {% if material.imagen_url %}
+              <div class="mb-2 d-flex align-items-center gap-3">
+                <img src="{{ url_for('static', filename=material.imagen_url) }}"
+                     alt="{{ material.nombre }}"
+                     style="width:80px;height:80px;object-fit:cover;border-radius:var(--radius);border:1px solid var(--color-border)">
+                <div>
+                  <div class="small text-muted mb-1">Imagen actual</div>
+                  <div class="form-check">
+                    <input class="form-check-input" type="checkbox"
+                           name="eliminar_imagen" id="eliminarImg" value="1">
+                    <label class="form-check-label small text-danger" for="eliminarImg">
+                      Eliminar imagen
+                    </label>
+                  </div>
+                </div>
+              </div>
+              {% endif %}
+              <input type="file" name="imagen" class="form-control"
+                     accept="image/png,image/jpeg,image/gif,image/webp">
+              <div class="form-text">Formatos: PNG, JPG, GIF, WebP. Máx. recomendado: 1 MB.</div>
+            </div>
+
+            <div class="col-12">
+              <div class="form-check">
+                <input class="form-check-input" type="checkbox" name="publicado"
+                       id="publicado" {{ 'checked' if material.publicado }}>
+                <label class="form-check-label" for="publicado">
+                  <strong>Publicar en catálogo</strong>
+                  <span class="text-muted"> — visible para solicitantes</span>
+                </label>
+              </div>
+            </div>
+
+          </div><!-- /row g-3 -->
+
+          <hr class="my-4">
+          <div class="d-flex gap-2">
+            <button type="submit" class="btn btn-primary">
+              <i class="bi bi-check2 me-1"></i>
+              {{ 'Crear material' if es_nuevo else 'Guardar cambios' }}
+            </button>
+            <a href="{{ url_for('admin.inventario') }}" class="btn btn-outline-secondary">
+              Cancelar
+            </a>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,49 @@
+{# templates/admin/proveedores.html #}
+{% extends "base.html" %}
+{% block title %}Proveedores{% endblock %}
+
+{% block breadcrumb %}<strong>Proveedores</strong>{% endblock %}
+
+{% block topbar_actions %}
+  <a href="{{ url_for('admin.proveedor_form') }}" class="btn btn-primary btn-sm">
+    <i class="bi bi-plus-lg me-1"></i>Nuevo proveedor
+  </a>
+{% endblock %}
+
+{% block content %}
+<h1 class="page-title">Directorio de Proveedores</h1>
+<p class="page-subtitle">{{ proveedores|length }} proveedores registrados.</p>
+
+<div class="row g-3">
+  {% for p in proveedores %}
+  <div class="col-md-6 col-lg-4">
+    <div class="card h-100">
+      <div class="card-body">
+        <div class="d-flex justify-content-between align-items-start mb-2">
+          <h6 class="fw-bold mb-0" style="color:var(--color-primary)">{{ p.nombre }}</h6>
+          <a href="{{ url_for('admin.proveedor_form', prov_id=p.id) }}"
+             class="btn btn-sm btn-outline-secondary">
+            <i class="bi bi-pencil"></i>
+          </a>
+        </div>
+        <div class="small text-muted">
+          {% if p.contacto %}<div><i class="bi bi-person me-2"></i>{{ p.contacto }}</div>{% endif %}
+          {% if p.telefono %}<div><i class="bi bi-telephone me-2"></i>{{ p.telefono }}</div>{% endif %}
+          {% if p.email    %}<div><i class="bi bi-envelope me-2"></i>{{ p.email }}</div>{% endif %}
+          {% if p.rfc      %}<div><i class="bi bi-card-text me-2"></i>RFC: {{ p.rfc }}</div>{% endif %}
+        </div>
+        {% if p.notas %}
+        <p class="mt-2 mb-0 text-muted small fst-italic">{{ p.notas }}</p>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+  {% else %}
+  <div class="col-12">
+    <div class="text-center text-muted py-5">
+      No hay proveedores. <a href="{{ url_for('admin.proveedor_form') }}">Agrega el primero.</a>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% endblock %}

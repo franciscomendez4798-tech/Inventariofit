@@ -1,0 +1,35 @@
+{% extends 'base.html' %}
+{% block title %}{{ 'Editar' if trabajador.id else 'Nuevo' }} Trabajador{% endblock %}
+{% block breadcrumb %}
+  <a href="{{ url_for('mantenimiento.personal') }}">Personal</a> / {{ 'Editar' if trabajador.id else 'Nuevo' }}
+{% endblock %}
+{% block content %}
+<div class="container-fluid">
+  <div class="card shadow-sm" style="max-width: 600px;">
+    <div class="card-body">
+      <form method="POST">
+        <div class="mb-3">
+          <label class="form-label">Nombre Completo</label>
+          <input type="text" name="nombre" class="form-control" value="{{ trabajador.nombre or '' }}" required>
+        </div>
+        <div class="mb-3">
+          <label class="form-label">Cargo</label>
+          <input type="text" name="cargo" class="form-control" value="{{ trabajador.cargo or '' }}" placeholder="Intendencia, Técnico, etc." required>
+        </div>
+        <div class="mb-3">
+          <label class="form-label">Área de trabajo
+            <small class="text-muted fw-normal">(aparece en formatos de requisición)</small>
+          </label>
+          <input type="text" name="area" class="form-control" value="{{ trabajador.area or '' }}"
+                 placeholder="Ej. Edificio A, Planta baja, Zona norte…">
+        </div>
+        <div class="mb-3 form-check">
+          <input type="checkbox" name="activo" class="form-check-input" id="activo" {% if trabajador.activo or not trabajador.id %}checked{% endif %}>
+          <label class="form-check-label" for="activo">Activo</label>
+        </div>
+        <button type="submit" class="btn btn-primary">Guardar Trabajador</button>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

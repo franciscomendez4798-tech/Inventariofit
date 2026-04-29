@@ -1,0 +1,276 @@
+{# templates/solicitante/panel.html #}
+{% extends "base.html" %}
+{% block title %}Panel{% endblock %}
+
+{% block breadcrumb %}<strong>Panel</strong> — Personal Administrativo{% endblock %}
+
+{% block content %}
+<!-- ── Bienvenida ──────────────────────────────────────────── -->
+<div class="panel-welcome mb-4">
+  <div class="panel-welcome-text">
+    <h1 class="page-title">Bienvenido, {{ current_user.nombre_completo.split()[0] }}</h1>
+    <p class="page-subtitle mb-0">
+      <i class="bi bi-building me-1"></i>
+      {% if departamento %}{{ departamento.nombre }}{% else %}Sin departamento asignado{% endif %}
+      — Panel de Personal Administrativo
+    </p>
+  </div>
+  <div class="panel-welcome-date">
+    <i class="bi bi-calendar3 me-1"></i>
+    {{ "ahora"|replace("ahora","") }}
+    <span id="fechaHoy"></span>
+  </div>
+</div>
+
+<!-- ── Stat Cards ──────────────────────────────────────────── -->
+<div class="row g-3 mb-4">
+  <div class="col-6 col-md-3">
+    <div class="stat-card">
+      <div class="stat-icon bordo"><i class="bi bi-clipboard-check"></i></div>
+      <div>
+        <div class="stat-value">{{ total_pedidos }}</div>
+        <div class="stat-label">Total pedidos</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="stat-card">
+      <div class="stat-icon dorado"><i class="bi bi-hourglass-split"></i></div>
+      <div>
+        <div class="stat-value">{{ pedidos_pendientes }}</div>
+        <div class="stat-label">Pendientes</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <a href="{{ url_for('solicitante.mis_ordenes_servicio') }}" class="text-decoration-none">
+      <div class="stat-card">
+        <div class="stat-icon" style="background:rgba(13,110,253,.12);color:#0d6efd;"><i class="bi bi-tools"></i></div>
+        <div>
+          <div class="stat-value">{{ ordenes_activas }}</div>
+          <div class="stat-label">Órdenes activas</div>
+        </div>
+      </div>
+    </a>
+  </div>
+  <div class="col-6 col-md-3">
+    {% if ordenes_pendiente_encuesta > 0 %}
+    <a href="{{ url_for('solicitante.mis_ordenes_servicio') }}" class="text-decoration-none">
+      <div class="stat-card">
+        <div class="stat-icon dorado"><i class="bi bi-star"></i></div>
+        <div>
+          <div class="stat-value">{{ ordenes_pendiente_encuesta }}</div>
+          <div class="stat-label">Encuestas pendientes</div>
+        </div>
+      </div>
+    </a>
+    {% else %}
+    <div class="stat-card">
+      <div class="stat-icon verde"><i class="bi bi-check-circle"></i></div>
+      <div>
+        <div class="stat-value">{{ pedidos_aprobados }}</div>
+        <div class="stat-label">Aprobados</div>
+      </div>
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+<!-- ── Acciones Rápidas + Requisiciones ────────────────────── -->
+<div class="row g-3 mb-4">
+  <div class="col-12 col-lg-6">
+    <div class="card h-100">
+      <div class="card-header">
+        <i class="bi bi-lightning-charge me-2"></i>Acciones Rápidas
+      </div>
+      <div class="card-body">
+        <div class="d-grid gap-2">
+          <a href="{{ url_for('solicitante.catalogo') }}" class="btn btn-primary py-2">
+            <i class="bi bi-shop me-2"></i>Ir al Catálogo de Insumos
+          </a>
+          <a href="{{ url_for('solicitante.mis_pedidos') }}" class="btn btn-outline-primary py-2">
+            <i class="bi bi-receipt me-2"></i>Ver Mis Pedidos
+          </a>
+        </div>
+        {% if categorias_permitidas %}
+        <div class="mt-3">
+          <div class="small fw-semibold text-muted mb-2">
+            <i class="bi bi-tag me-1"></i>Categorías disponibles para tu departamento:
+          </div>
+          <div class="d-flex flex-wrap gap-2">
+            {% for cat in categorias_permitidas %}
+            <span class="badge rounded-pill" 
+                  style="background:var(--color-primary-light);color:var(--color-primary);font-weight:600;font-size:.78rem;padding:5px 12px;">
+              {{ cat.nombre }}
+            </span>
+            {% endfor %}
+          </div>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <div class="col-12 col-lg-6">
+    <div class="card h-100">
+      <div class="card-header d-flex align-items-center justify-content-between">
+        <span><i class="bi bi-file-earmark-text me-2"></i>Requisiciones</span>
+        <a href="{{ url_for('solicitante.requisiciones') }}" class="btn btn-sm btn-outline-primary">
+          Ver historial
+        </a>
+      </div>
+      <div class="card-body d-flex flex-column align-items-center justify-content-center text-center py-4">
+        <i class="bi bi-file-earmark-spreadsheet" style="font-size:2.5rem;color:var(--color-primary);opacity:.7"></i>
+        <p class="mt-3 mb-1 fw-semibold" style="color:var(--color-text-2)">
+          Formatos de Pedido de Almacén
+        </p>
+        <p class="small text-muted mb-3" style="max-width:280px">
+          Cada pedido que realizas genera automáticamente el formato institucional
+          R-AP-33-01-01. Descárgalos en .xlsx o PDF.
+        </p>
+        <a href="{{ url_for('solicitante.requisiciones') }}" class="btn btn-primary btn-sm">
+          <i class="bi bi-download me-1"></i>Ir a Requisiciones
+        </a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Últimos Pedidos ─────────────────────────────────────── -->
+<div class="card">
+  <div class="card-header d-flex align-items-center justify-content-between">
+    <span><i class="bi bi-clock-history me-2"></i>Últimas solicitudes</span>
+    {% if ultimos_pedidos %}
+    <a href="{{ url_for('solicitante.mis_pedidos') }}" class="btn btn-sm btn-outline-primary">
+      Ver todos
+    </a>
+    {% endif %}
+  </div>
+  <div class="card-body p-0">
+    {% if not ultimos_pedidos %}
+    <div class="text-center py-4 text-muted">
+      <i class="bi bi-inbox fs-3 d-block mb-2"></i>
+      Aún no tienes pedidos. 
+      <a href="{{ url_for('solicitante.catalogo') }}">Ir al catálogo</a> para crear uno.
+    </div>
+    {% else %}
+    <div class="table-responsive">
+      <table class="table table-sm mb-0">
+        <thead>
+          <tr>
+            <th>Folio</th>
+            <th>Fecha</th>
+            <th>Artículos</th>
+            <th>Estado</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for p in ultimos_pedidos %}
+          <tr>
+            <td><span class="fw-bold font-monospace small">{{ p.folio }}</span></td>
+            <td class="small text-muted">{{ p.fecha_solicitud.strftime('%d/%m/%Y %H:%M') }}</td>
+            <td class="small">{{ p.detalles|length }} ítem{{ 'es' if p.detalles|length != 1 }}</td>
+            <td><span class="badge-estado estado-{{ p.estado }}">{{ p.estado.replace('_', ' ') }}</span></td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}
+
+{# ── Modal pop-up de encuesta pendiente ── #}
+{% if orden_encuesta_pendiente %}
+<div class="modal fade" id="modalEncuesta" tabindex="-1" data-bs-backdrop="static">
+  <div class="modal-dialog modal-lg modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header border-0 pb-0">
+        <h5 class="modal-title fw-bold">
+          <i class="bi bi-star-fill text-warning me-2"></i>Encuesta de Satisfacción
+        </h5>
+      </div>
+      <div class="modal-body px-4 pb-2">
+        <p class="text-muted mb-1">
+          Orden <strong class="font-monospace">{{ orden_encuesta_pendiente.folio }}</strong> —
+          Tu opinión mejora el servicio. Solo toma 1 minuto.
+        </p>
+        <form id="formEncuesta"
+              method="POST"
+              action="{{ url_for('solicitante.encuesta_satisfaccion', orden_id=orden_encuesta_pendiente.id) }}">
+
+          {% set preguntas = [
+            ('experiencia',     '¿Cómo fue tu experiencia general?',
+             ['Muy insatisfecho','Insatisfecho','Neutral','Satisfecho','Muy satisfecho']),
+            ('profesionalismo', '¿Qué tan profesional fue el equipo?',
+             ['Muy poco profesional','Poco profesional','Neutral','Profesional','Muy profesional']),
+            ('calidad',         '¿Calidad del trabajo realizado?',
+             ['Muy insatisfecho','Insatisfecho','Neutral','Satisfecho','Muy satisfecho']),
+            ('comunicacion',    '¿Comunicación durante el proceso?',
+             ['Muy insatisfactoria','Insatisfactoria','Neutral','Satisfactoria','Muy satisfactoria']),
+          ] %}
+
+          {% for campo, pregunta, opciones in preguntas %}
+          <div class="mb-3">
+            <p class="fw-semibold mb-1 small">{{ loop.index }}. {{ pregunta }}</p>
+            <div class="d-flex flex-wrap gap-2">
+              {% for op in opciones %}
+              {% set i = loop.index %}
+              <div class="form-check form-check-inline">
+                <input class="form-check-input" type="radio"
+                       name="{{ campo }}" id="m_{{ campo }}_{{ i }}" value="{{ i }}" required>
+                <label class="form-check-label small" for="m_{{ campo }}_{{ i }}">{{ op }}</label>
+              </div>
+              {% endfor %}
+            </div>
+          </div>
+          {% endfor %}
+
+          <div class="mb-3">
+            <p class="fw-semibold mb-1 small">5. ¿El servicio se realizó dentro del plazo?</p>
+            {% for i, op in [(1,'Sí, dentro del plazo.'),(2,'No, se retrasó ligeramente.'),(3,'No, se retrasó considerablemente.')] %}
+            <div class="form-check">
+              <input class="form-check-input" type="radio"
+                     name="tiempo_respuesta" id="m_tr_{{ i }}" value="{{ i }}" required>
+              <label class="form-check-label small" for="m_tr_{{ i }}">{{ op }}</label>
+            </div>
+            {% endfor %}
+          </div>
+
+          <div class="mb-2">
+            <label class="fw-semibold small d-block mb-1">Comentarios adicionales (opcional)</label>
+            <textarea name="comentarios" rows="2" class="form-control form-control-sm"
+                      maxlength="500" placeholder="¿Algo más que quieras comentar?"></textarea>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer border-0 pt-0">
+        <a href="{{ url_for('solicitante.mis_ordenes_servicio') }}"
+           class="btn btn-outline-secondary btn-sm">Responder más tarde</a>
+        <button type="submit" form="formEncuesta" class="btn btn-warning btn-sm fw-bold px-4">
+          <i class="bi bi-send me-1"></i>Enviar encuesta
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+{% block scripts %}
+<script>
+// Fecha actual en español
+const opciones = { weekday:'long', year:'numeric', month:'long', day:'numeric' };
+const hoy = new Date().toLocaleDateString('es-MX', opciones);
+const el = document.getElementById('fechaHoy');
+if (el) el.textContent = hoy.charAt(0).toUpperCase() + hoy.slice(1);
+
+// Mostrar pop-up encuesta si hay una pendiente
+{% if orden_encuesta_pendiente %}
+document.addEventListener('DOMContentLoaded', () => {
+  const modal = new bootstrap.Modal(document.getElementById('modalEncuesta'));
+  modal.show();
+});
+{% endif %}
+</script>
+{% endblock %}

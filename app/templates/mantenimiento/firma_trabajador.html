@@ -1,0 +1,39 @@
+{% extends 'base.html' %}
+{% block title %}Firma de {{ trabajador.nombre }}{% endblock %}
+{% block breadcrumb %}
+  <a href="{{ url_for('mantenimiento.personal') }}" class="text-muted text-decoration-none">Personal</a>
+  <span class="mx-1 text-muted">/</span><strong>Firma</strong>
+{% endblock %}
+
+{% block content %}
+<div class="animate-fade-in" style="max-width:580px; margin:0 auto;">
+  <h1 class="page-title-gradient">Firma de {{ trabajador.nombre }}</h1>
+  <p class="page-subtitle mb-4">
+    Cargo: <strong>{{ trabajador.cargo }}</strong><br>
+    Esta firma aparecerá como <strong>"Realizó"</strong> en las Órdenes de Servicio.
+  </p>
+
+  {% if firma_obj %}
+  <div class="alert alert-success mb-4">
+    <i class="bi bi-check-circle-fill me-2"></i>Firma guardada. Puedes actualizarla.
+  </div>
+  <div class="premium-card mb-4">
+    <div class="card-body p-3 text-center">
+      <p class="text-muted small mb-2">Firma actual:</p>
+      <img src="{{ firma_obj.firma_b64 }}" alt="Firma"
+           class="border rounded" style="max-height:100px; max-width:100%;">
+    </div>
+  </div>
+  {% endif %}
+
+  <form method="POST">
+    {% include 'shared/firma_pad.html' %}
+    <div class="d-flex gap-3">
+      <button type="submit" class="btn btn-dark px-5">
+        <i class="bi bi-floppy me-2"></i>Guardar firma
+      </button>
+      <a href="{{ url_for('mantenimiento.personal') }}" class="btn btn-outline-secondary">Volver</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

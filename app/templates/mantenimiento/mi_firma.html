@@ -1,0 +1,38 @@
+{% extends 'base.html' %}
+{% block title %}Mi Firma Digital{% endblock %}
+{% block breadcrumb %}
+  <span class="text-muted">Mantenimiento</span> <span class="mx-1 text-muted">/</span>
+  <strong>Mi Firma Digital</strong>
+{% endblock %}
+
+{% block content %}
+<div class="animate-fade-in" style="max-width:580px; margin:0 auto;">
+  <h1 class="page-title-gradient">Mi Firma Digital</h1>
+  <p class="page-subtitle mb-4">
+    Tu firma aparecerá como <strong>"Supervisó"</strong> en las Órdenes de Servicio que entregues.
+  </p>
+
+  {% if firma_obj %}
+  <div class="alert alert-success mb-4">
+    <i class="bi bi-check-circle-fill me-2"></i>Firma guardada. Puedes actualizarla dibujando una nueva.
+  </div>
+  <div class="premium-card mb-4">
+    <div class="card-body p-3 text-center">
+      <p class="text-muted small mb-2">Firma actual:</p>
+      <img src="{{ firma_obj.firma_b64 }}" alt="Mi firma"
+           class="border rounded" style="max-height:100px; max-width:100%;">
+    </div>
+  </div>
+  {% endif %}
+
+  <form method="POST">
+    {% include 'shared/firma_pad.html' %}
+    <div class="d-flex gap-3">
+      <button type="submit" class="btn btn-dark px-5">
+        <i class="bi bi-floppy me-2"></i>Guardar firma
+      </button>
+      <a href="{{ url_for('mantenimiento.ordenes_servicio') }}" class="btn btn-outline-secondary">Volver</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

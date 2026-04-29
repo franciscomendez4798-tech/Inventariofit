@@ -1,0 +1,248 @@
+{% extends 'base.html' %}
+
+{% block title %}{% if accion == 'nueva' %}Nueva Reserva{% else %}Editar Reserva{% endif %} — Auditorio FIT{% endblock %}
+
+{% block head_extra %}
+<style>
+  .seccion-externo { display:none; }
+  .seccion-docente  { display:none; }
+</style>
+{% endblock %}
+
+{% block content %}
+{% set es_editar = (accion == 'editar') %}
+{% set datos = reserva if es_editar else form %}
+
+<div class="d-flex align-items-center mb-4 gap-2">
+  <a href="{{ url_for('admin.auditorio') }}" class="btn btn-outline-secondary btn-sm">
+    <i class="bi bi-arrow-left"></i>
+  </a>
+  <div>
+    <h2 class="fw-bold mb-0">
+      <i class="bi bi-camera-video-fill me-2 text-primary"></i>
+      {% if es_editar %}Editar Reserva{% else %}Nueva Reserva{% endif %}
+    </h2>
+    <small class="text-muted">Auditorio Interactivo FIT</small>
+  </div>
+</div>
+
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% for cat, msg in messages %}
+    <div class="alert alert-{{ cat }} alert-dismissible fade show" role="alert">
+      {{ msg }}<button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+  {% endfor %}
+{% endwith %}
+
+<div class="row justify-content-center">
+<div class="col-lg-8">
+
+<form method="POST">
+  <!-- Tipo de usuario -->
+  <div class="card shadow-sm mb-4">
+    <div class="card-header fw-semibold bg-white">
+      <i class="bi bi-person-badge me-1 text-primary"></i>Tipo de Solicitante
+    </div>
+    <div class="card-body">
+      <div class="row g-3">
+        <div class="col-sm-6">
+          <div class="form-check form-check-inline p-0 w-100">
+            <input class="btn-check" type="radio" name="tipo_usuario" id="tipo_docente"
+                   value="docente"
+                   {% if (es_editar and reserva.tipo_usuario == 'docente') or (not es_editar and form.get('tipo_usuario','docente') == 'docente') %}checked{% endif %}
+                   required>
+            <label class="btn btn-outline-primary w-100 py-3" for="tipo_docente">
+              <i class="bi bi-mortarboard-fill d-block fs-3 mb-1"></i>
+              Docente / Personal Interno
+            </label>
+          </div>
+        </div>
+        <div class="col-sm-6">
+          <div class="form-check form-check-inline p-0 w-100">
+            <input class="btn-check" type="radio" name="tipo_usuario" id="tipo_externo"
+                   value="externo"
+                   {% if (es_editar and reserva.tipo_usuario == 'externo') or (not es_editar and form.get('tipo_usuario') == 'externo') %}checked{% endif %}>
+            <label class="btn btn-outline-warning w-100 py-3" for="tipo_externo">
+              <i class="bi bi-person-lines-fill d-block fs-3 mb-1"></i>
+              Usuario Externo
+            </label>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Datos personales -->
+  <div class="card shadow-sm mb-4">
+    <div class="card-header fw-semibold bg-white">
+      <i class="bi bi-person me-1 text-primary"></i>Datos del Solicitante
+    </div>
+    <div class="card-body">
+      <div class="row g-3">
+        <div class="col-md-6">
+          <label class="form-label">Nombre completo <span class="text-danger">*</span></label>
+          <input type="text" class="form-control" name="nombre" required
+                 value="{{ (reserva.nombre if es_editar else form.get('nombre','')) or '' }}">
+        </div>
+        <div class="col-md-6">
+          <label class="form-label">Departamento / Institución <span class="text-danger">*</span></label>
+          <input type="text" class="form-control" name="departamento" required
+                 value="{{ (reserva.departamento if es_editar else form.get('departamento','')) or '' }}">
+        </div>
+
+        <!-- Solo docentes -->
+        <div class="col-md-6 seccion-docente">
+          <label class="form-label">Matrícula / N° Empleado</label>
+          <input type="text" class="form-control" name="matricula"
+                 value="{{ (reserva.matricula if es_editar else form.get('matricula','')) or '' }}">
+        </div>
+
+        <!-- Solo externos -->
+        <div class="col-md-6 seccion-externo">
+          <label class="form-label">Teléfono</label>
+          <input type="tel" class="form-control" name="telefono"
+                 value="{{ (reserva.telefono if es_editar else form.get('telefono','')) or '' }}">
+        </div>
+        <div class="col-md-6 seccion-externo">
+          <label class="form-label">Correo electrónico <span class="text-danger">*</span></label>
+          <input type="email" class="form-control" name="correo"
+                 value="{{ (reserva.correo if es_editar else form.get('correo','')) or '' }}">
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Datos del evento -->
+  <div class="card shadow-sm mb-4">
+    <div class="card-header fw-semibold bg-white">
+      <i class="bi bi-calendar-event me-1 text-primary"></i>Datos del Evento
+    </div>
+    <div class="card-body">
+      <div class="row g-3">
+        <div class="col-12">
+          <label class="form-label">Nombre del evento <span class="text-danger">*</span></label>
+          <input type="text" class="form-control" name="nombre_evento" required
+                 value="{{ (reserva.nombre_evento if es_editar else form.get('nombre_evento','')) or '' }}">
+        </div>
+        <div class="col-md-6">
+          <label class="form-label">Fecha y hora de inicio <span class="text-danger">*</span></label>
+          <input type="datetime-local" class="form-control" name="fecha_inicio" required
+                 value="{{ (reserva.fecha_inicio.strftime('%Y-%m-%dT%H:%M') if es_editar else form.get('fecha_inicio','')) or '' }}">
+        </div>
+        <div class="col-md-6">
+          <label class="form-label">Fecha y hora de fin <span class="text-danger">*</span></label>
+          <input type="datetime-local" class="form-control" name="fecha_fin" required
+                 value="{{ (reserva.fecha_fin.strftime('%Y-%m-%dT%H:%M') if es_editar else form.get('fecha_fin','')) or '' }}">
+        </div>
+        <div class="col-12">
+          <label class="form-label">Descripción del evento</label>
+          <textarea class="form-control" name="descripcion" rows="3">{{ (reserva.descripcion if es_editar else form.get('descripcion','')) or '' }}</textarea>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Estado + notas (solo editar) -->
+  {% if es_editar %}
+  <div class="card shadow-sm mb-4">
+    <div class="card-header fw-semibold bg-white">
+      <i class="bi bi-sliders me-1 text-primary"></i>Estado y Notas
+    </div>
+    <div class="card-body">
+      <div class="row g-3">
+        <div class="col-md-4">
+          <label class="form-label">Estado</label>
+          <select class="form-select" name="estado">
+            {% for e in ['reservado','en_uso','completado','cancelado'] %}
+            <option value="{{ e }}" {% if reserva.estado == e %}selected{% endif %}>
+              {{ e|capitalize }}
+            </option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-md-8">
+          <label class="form-label">Notas internas</label>
+          <input type="text" class="form-control" name="notas" value="{{ reserva.notas or '' }}">
+        </div>
+
+        {% if reserva.tipo_usuario == 'externo' %}
+        <div class="col-12">
+          <div class="alert {% if reserva.pago_verificado %}alert-success{% else %}alert-warning{% endif %} d-flex align-items-center justify-content-between mb-0">
+            <div>
+              {% if reserva.pago_verificado %}
+                <i class="bi bi-check-circle-fill me-2"></i>Pago <strong>verificado</strong>
+              {% else %}
+                <i class="bi bi-exclamation-circle-fill me-2"></i>Pago <strong>pendiente de verificación</strong>
+              {% endif %}
+            </div>
+            <form method="POST" action="{{ url_for('admin.auditorio_verificar_pago', reserva_id=reserva.id) }}" class="d-inline">
+              <button type="submit" class="btn btn-sm {% if reserva.pago_verificado %}btn-outline-danger{% else %}btn-success{% endif %}">
+                {% if reserva.pago_verificado %}
+                  <i class="bi bi-x-circle me-1"></i>Desmarcar pago
+                {% else %}
+                  <i class="bi bi-check-circle me-1"></i>Verificar pago
+                {% endif %}
+              </button>
+            </form>
+          </div>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+  {% else %}
+  <div class="card shadow-sm mb-4">
+    <div class="card-header fw-semibold bg-white">
+      <i class="bi bi-chat-left-text me-1 text-primary"></i>Notas internas
+    </div>
+    <div class="card-body">
+      <input type="text" class="form-control" name="notas"
+             placeholder="Observaciones adicionales (opcional)"
+             value="{{ form.get('notas','') or '' }}">
+    </div>
+  </div>
+  {% endif %}
+
+  <div class="d-flex gap-2 justify-content-between">
+    {% if es_editar %}
+    <form method="POST" action="{{ url_for('admin.auditorio_cancelar', reserva_id=reserva.id) }}"
+          onsubmit="return confirm('¿Cancelar esta reserva?')">
+      <button type="submit" class="btn btn-outline-danger btn-sm">
+        <i class="bi bi-x-circle me-1"></i>Cancelar Reserva
+      </button>
+    </form>
+    {% else %}
+    <div></div>
+    {% endif %}
+    <div class="d-flex gap-2">
+      <a href="{{ url_for('admin.auditorio') }}" class="btn btn-outline-secondary">Cancelar</a>
+      <button type="submit" class="btn btn-primary">
+        <i class="bi bi-save me-1"></i>
+        {% if es_editar %}Guardar cambios{% else %}Registrar Reserva{% endif %}
+      </button>
+    </div>
+  </div>
+</form>
+
+</div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function() {
+  const radios = document.querySelectorAll('input[name="tipo_usuario"]');
+  const secsExt = document.querySelectorAll('.seccion-externo');
+  const secsDoc = document.querySelectorAll('.seccion-docente');
+
+  function actualizarSecciones() {
+    const tipo = document.querySelector('input[name="tipo_usuario"]:checked')?.value;
+    secsExt.forEach(el => el.style.display = tipo === 'externo' ? '' : 'none');
+    secsDoc.forEach(el => el.style.display = tipo === 'docente' ? '' : 'none');
+  }
+
+  radios.forEach(r => r.addEventListener('change', actualizarSecciones));
+  actualizarSecciones();
+})();
+</script>
+{% endblock %}

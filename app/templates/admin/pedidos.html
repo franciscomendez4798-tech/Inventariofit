@@ -1,0 +1,96 @@
+{# templates/admin/pedidos.html #}
+{% extends "base.html" %}
+{% block title %}Pedidos{% endblock %}
+
+{% block breadcrumb %}<strong>Pedidos</strong> — Cola de solicitudes{% endblock %}
+
+{% block content %}
+<h1 class="page-title">Gestión de Pedidos</h1>
+<p class="page-subtitle">Revisa, aprueba o rechaza solicitudes de insumos.</p>
+
+<!-- Filtro por estado -->
+<div class="d-flex gap-2 flex-wrap mb-3">
+  {% set tabs = [
+    ('pendiente',   'Pendientes',  'warning'),
+    ('en_revision', 'En revisión', 'info'),
+    ('aprobado',    'Aprobados',   'success'),
+    ('modificado',  'Modificados', 'secondary'),
+    ('rechazado',   'Rechazados',  'danger'),
+    ('entregado',   'Entregados',  'dark'),
+    ('todos',       'Todos',       'light'),
+  ] %}
+  {% for val, label, col in tabs %}
+  <a href="{{ url_for('admin.pedidos', estado=val) }}"
+     class="btn btn-sm {% if estado_filtro == val %}btn-{{ col }}{% else %}btn-outline-{{ col }}{% endif %}">
+    {{ label }}
+  </a>
+  {% endfor %}
+</div>
+
+<div class="card">
+  <div class="table-responsive">
+    <table class="table mb-0">
+      <thead>
+        <tr>
+          <th>Folio</th>
+          <th>Solicitante</th>
+          <th>Departamento</th>
+          <th>Artículos</th>
+          <th>Estado</th>
+          <th>Fecha</th>
+          <th class="text-center">Acción</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for p in pedidos %}
+        <tr>
+          <td><span class="fw-semibold font-monospace small">{{ p.folio }}</span></td>
+          <td>{{ p.solicitante.nombre_completo }}</td>
+          <td>
+            <span class="badge bg-light text-dark border">
+              {{ p.departamento.codigo }}
+            </span>
+          </td>
+          <td class="text-center">
+            <span class="badge" style="background:var(--color-surface-2);color:var(--color-text-2)">
+              {{ p.detalles|length }}
+            </span>
+          </td>
+          <td>
+            <span class="badge-estado estado-{{ p.estado }}">{{ p.estado.replace('_',' ') }}</span>
+          </td>
+          <td class="text-muted small">{{ p.fecha_solicitud.strftime('%d/%m/%Y %H:%M') }}</td>
+          <td class="text-center">
+            {% if p.estado in ('pendiente', 'en_revision') %}
+            <a href="{{ url_for('admin.revisar_pedido', pedido_id=p.id) }}"
+               class="btn btn-sm btn-primary">
+              <i class="bi bi-clipboard-check me-1"></i>Revisar
+            </a>
+            {% elif p.estado in ('aprobado', 'modificado') %}
+            <form method="POST"
+                  action="{{ url_for('admin.confirmar_entrega', pedido_id=p.id) }}"
+                  onsubmit="return confirm('¿Confirmar entrega física de este pedido?')">
+              <button type="submit" class="btn btn-sm btn-outline-success">
+                <i class="bi bi-box-arrow-in-down me-1"></i>Entregar
+              </button>
+            </form>
+            {% else %}
+            <a href="{{ url_for('admin.revisar_pedido', pedido_id=p.id) }}"
+               class="btn btn-sm btn-outline-secondary">
+              <i class="bi bi-eye me-1"></i>Ver
+            </a>
+            {% endif %}
+          </td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="7" class="text-center text-muted py-5">
+            No hay pedidos con estado <strong>{{ estado_filtro }}</strong>.
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

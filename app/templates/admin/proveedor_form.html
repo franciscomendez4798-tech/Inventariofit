@@ -1,0 +1,64 @@
+{# templates/admin/proveedor_form.html #}
+{% extends "base.html" %}
+{% set es_nuevo = not proveedor.id %}
+{% block title %}{{ 'Nuevo proveedor' if es_nuevo else 'Editar proveedor' }}{% endblock %}
+
+{% block breadcrumb %}
+  <a href="{{ url_for('admin.proveedores') }}" class="text-decoration-none text-muted">Proveedores</a>
+  &rsaquo; <strong>{{ 'Nuevo' if es_nuevo else 'Editar' }}</strong>
+{% endblock %}
+
+{% block content %}
+<h1 class="page-title">{{ 'Nuevo proveedor' if es_nuevo else 'Editar proveedor' }}</h1>
+<div class="row"><div class="col-lg-6">
+  <div class="card">
+    <div class="card-body">
+      <form method="POST">
+        <div class="row g-3">
+          <div class="col-12">
+            <label class="form-label">Nombre / Razón social *</label>
+            <input type="text" name="nombre" class="form-control"
+                   value="{{ proveedor.nombre or '' }}" required>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">Nombre del contacto</label>
+            <input type="text" name="contacto" class="form-control"
+                   value="{{ proveedor.contacto or '' }}">
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">Teléfono</label>
+            <input type="text" name="telefono" class="form-control"
+                   value="{{ proveedor.telefono or '' }}">
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">Correo electrónico</label>
+            <input type="email" name="email" class="form-control"
+                   value="{{ proveedor.email or '' }}">
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">RFC</label>
+            <input type="text" name="rfc" class="form-control"
+                   value="{{ proveedor.rfc or '' }}" placeholder="AAA010101AAA">
+          </div>
+          <div class="col-12">
+            <label class="form-label">Dirección</label>
+            <textarea name="direccion" class="form-control" rows="2">{{ proveedor.direccion or '' }}</textarea>
+          </div>
+          <div class="col-12">
+            <label class="form-label">Notas internas</label>
+            <textarea name="notas" class="form-control" rows="2"
+                      placeholder="Tiempos de entrega, condiciones de pago…">{{ proveedor.notas or '' }}</textarea>
+          </div>
+        </div>
+        <hr class="my-3">
+        <div class="d-flex gap-2">
+          <button type="submit" class="btn btn-primary">
+            {{ 'Crear proveedor' if es_nuevo else 'Guardar cambios' }}
+          </button>
+          <a href="{{ url_for('admin.proveedores') }}" class="btn btn-outline-secondary">Cancelar</a>
+        </div>
+      </form>
+    </div>
+  </div>
+</div></div>
+{% endblock %}

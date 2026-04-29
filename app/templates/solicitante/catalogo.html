@@ -1,0 +1,243 @@
+{# templates/solicitante/catalogo.html #}
+{% extends "base.html" %}
+{% block title %}Catálogo{% endblock %}
+
+{% block breadcrumb %}<strong>Catálogo</strong> — Materiales disponibles{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-start mb-1 flex-wrap gap-2">
+  <div>
+    <h1 class="page-title">Catálogo de Insumos</h1>
+    <p class="page-subtitle">
+      <i class="bi bi-building me-1"></i>{{ departamento.nombre }}
+      — Selecciona los materiales que necesitas.
+    </p>
+  </div>
+  <button class="btn btn-primary" data-bs-toggle="offcanvas"
+          data-bs-target="#offcanvasCarrito">
+    <i class="bi bi-cart3 me-1"></i>
+    Ver carrito
+    <span class="badge bg-light text-dark ms-1" id="contadorCarrito">0</span>
+  </button>
+</div>
+
+{% if not catalogo %}
+<div class="text-center py-5 text-muted">
+  <i class="bi bi-inbox fs-1 d-block mb-2"></i>
+  No hay materiales disponibles en este momento.
+  Contacta al administrador.
+</div>
+{% else %}
+
+<!-- Buscar -->
+<div class="mb-3">
+  <input type="text" id="buscarMaterial" class="form-control"
+         placeholder="🔍  Buscar material…" style="max-width:340px">
+</div>
+
+<!-- Catálogo agrupado por categoría -->
+{% for categoria, items in catalogo.items() %}
+<div class="mb-4 categoria-bloque" data-categoria="{{ categoria }}">
+  <h5 class="fw-semibold mb-3" style="color:var(--color-primary);border-bottom:2px solid var(--color-primary-light);padding-bottom:6px">
+    <i class="bi bi-tag me-2"></i>{{ categoria }}
+  </h5>
+  <div class="catalogo-grid">
+    {% for mat in items %}
+    <div class="material-card" data-nombre="{{ mat.nombre|lower }}">
+
+      <!-- Imagen del producto -->
+      <div class="material-card-img">
+        {% if mat.imagen_url %}
+        <img src="{{ url_for('static', filename=mat.imagen_url) }}"
+             alt="{{ mat.nombre }}">
+        {% else %}
+        <div class="material-card-img-placeholder">
+          <i class="bi bi-box-seam"></i>
+        </div>
+        {% endif %}
+      </div>
+
+      <!-- Info: solo nombre y tipo -->
+      <div class="material-card-name">{{ mat.nombre }}</div>
+      <div class="material-card-tipo mb-3">
+        <i class="bi bi-tag-fill me-1"></i>{{ mat.categoria.nombre }}
+      </div>
+
+      <!-- Cantidad + Agregar -->
+      <div class="d-flex align-items-center gap-2">
+        <input type="number" class="qty-input input-qty"
+               data-id="{{ mat.id }}"
+               data-nombre="{{ mat.nombre }}"
+               data-unidad="{{ mat.unidad_medida }}"
+               data-max="{{ mat.stock_actual }}"
+               value="1" min="1" max="{{ mat.stock_actual }}"
+               placeholder="1">
+        <button class="btn btn-sm btn-primary flex-fill btn-agregar"
+                data-id="{{ mat.id }}">
+          <i class="bi bi-plus me-1"></i>Agregar
+        </button>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+{% endfor %}
+{% endif %}
+
+<!-- ══════════════════════════════════════════════════════
+     OFFCANVAS: CARRITO
+══════════════════════════════════════════════════════ -->
+<div class="offcanvas offcanvas-end" tabindex="-1" id="offcanvasCarrito"
+     style="width:380px">
+  <div class="offcanvas-header" style="border-bottom:1px solid var(--color-border)">
+    <h5 class="offcanvas-title fw-bold">
+      <i class="bi bi-cart3 me-2" style="color:var(--color-primary)"></i>Mi pedido
+    </h5>
+    <button type="button" class="btn-close" data-bs-dismiss="offcanvas"></button>
+  </div>
+  <div class="offcanvas-body d-flex flex-column">
+
+    <div id="carritoVacio" class="text-center text-muted py-5">
+      <i class="bi bi-cart-x fs-2 d-block mb-2"></i>El carrito está vacío.
+    </div>
+
+    <div id="carritoItems" style="display:none;flex:1;overflow-y:auto"></div>
+
+    <form method="POST" action="{{ url_for('solicitante.nuevo_pedido') }}"
+          id="formPedido" style="display:none">
+      <hr>
+      <div class="mb-3">
+        <label class="form-label">Notas para el administrador</label>
+        <textarea name="notas_solicitante" class="form-control" rows="2"
+                  placeholder="Urgencia, uso previsto…"></textarea>
+      </div>
+      <div id="camposOcultos"></div>
+      <button type="submit" class="btn btn-primary w-100">
+        <i class="bi bi-send me-2"></i>Enviar solicitud
+      </button>
+    </form>
+
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+/**
+ * Carrito en memoria.
+ * Estructura: { id: { nombre, unidad, cantidad, max } }
+ */
+let carrito = {};
+
+function actualizarCarritoUI() {
+  const ids    = Object.keys(carrito);
+  const count  = ids.reduce((s, k) => s + carrito[k].cantidad, 0);
+
+  document.getElementById('contadorCarrito').textContent = count;
+
+  const vacio  = document.getElementById('carritoVacio');
+  const items  = document.getElementById('carritoItems');
+  const form   = document.getElementById('formPedido');
+  const hidden = document.getElementById('camposOcultos');
+
+  if (ids.length === 0) {
+    vacio.style.display = '';
+    items.style.display = 'none';
+    form.style.display  = 'none';
+    return;
+  }
+
+  vacio.style.display = 'none';
+  items.style.display = '';
+  form.style.display  = '';
+
+  // Renderizar ítems
+  items.innerHTML = ids.map(id => {
+    const it = carrito[id];
+    return `
+      <div class="d-flex align-items-center gap-2 py-2 border-bottom">
+        <div style="flex:1">
+          <div class="fw-semibold small">${it.nombre}</div>
+          <div class="text-muted" style="font-size:.75rem">${it.unidad}</div>
+        </div>
+        <input type="number" value="${it.cantidad}" min="1" max="${it.max}"
+               class="qty-input qty-carrito" data-id="${id}" style="width:65px">
+        <button class="btn btn-sm btn-outline-danger btn-eliminar" data-id="${id}">
+          <i class="bi bi-trash"></i>
+        </button>
+      </div>`;
+  }).join('');
+
+  // Campos ocultos para el POST
+  hidden.innerHTML = ids.map(id => `
+    <input type="hidden" name="material_id" value="${id}">
+    <input type="hidden" name="cantidad"    value="${carrito[id].cantidad}" id="hid_${id}">
+  `).join('');
+
+  // Eventos en ítems del carrito
+  items.querySelectorAll('.qty-carrito').forEach(inp => {
+    inp.addEventListener('change', () => {
+      const id = inp.dataset.id;
+      const v  = Math.max(1, Math.min(parseInt(inp.value)||1, carrito[id].max));
+      carrito[id].cantidad = v;
+      inp.value = v;
+      document.getElementById(`hid_${id}`).value = v;
+      document.getElementById('contadorCarrito').textContent =
+        Object.values(carrito).reduce((s,x) => s + x.cantidad, 0);
+    });
+  });
+
+  items.querySelectorAll('.btn-eliminar').forEach(btn => {
+    btn.addEventListener('click', () => {
+      delete carrito[btn.dataset.id];
+      actualizarCarritoUI();
+    });
+  });
+}
+
+// Agregar al carrito
+document.querySelectorAll('.btn-agregar').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const id   = btn.dataset.id;
+    const inp  = document.querySelector(`.input-qty[data-id="${id}"]`);
+    const cant = Math.max(1, parseInt(inp.value) || 1);
+    const max  = parseInt(inp.dataset.max);
+
+    if (carrito[id]) {
+      carrito[id].cantidad = Math.min(carrito[id].cantidad + cant, max);
+    } else {
+      carrito[id] = {
+        nombre: inp.dataset.nombre,
+        unidad: inp.dataset.unidad,
+        cantidad: Math.min(cant, max),
+        max,
+      };
+    }
+    inp.value = 1;
+    actualizarCarritoUI();
+
+    // Feedback visual
+    btn.innerHTML = '<i class="bi bi-check me-1"></i>Agregado';
+    btn.classList.replace('btn-primary', 'btn-success');
+    setTimeout(() => {
+      btn.innerHTML = '<i class="bi bi-plus me-1"></i>Agregar';
+      btn.classList.replace('btn-success', 'btn-primary');
+    }, 1200);
+  });
+});
+
+// Filtro de búsqueda
+document.getElementById('buscarMaterial')?.addEventListener('input', function() {
+  const q = this.value.toLowerCase();
+  document.querySelectorAll('.material-card').forEach(card => {
+    card.style.display = card.dataset.nombre.includes(q) ? '' : 'none';
+  });
+  // Ocultar encabezado de categoría si todos sus hijos están ocultos
+  document.querySelectorAll('.categoria-bloque').forEach(bloque => {
+    const visibles = [...bloque.querySelectorAll('.material-card')]
+                     .filter(c => c.style.display !== 'none');
+    bloque.style.display = visibles.length ? '' : 'none';
+  });
+});
+</script>
+{% endblock %}

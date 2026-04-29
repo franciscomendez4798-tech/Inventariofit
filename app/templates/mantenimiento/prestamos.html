@@ -1,0 +1,110 @@
+{% extends 'base.html' %}
+{% block title %}Préstamos de Herramientas{% endblock %}
+{% block breadcrumb %}
+  <span class="text-muted">Mantenimiento</span> <span class="mx-1 text-muted">/</span> Préstamos
+{% endblock %}
+{% block topbar_actions %}
+<a href="{{ url_for('mantenimiento.prestamo_form') }}" class="btn btn-primary d-flex align-items-center gap-2">
+  <i class="bi bi-plus-lg"></i> Nuevo Préstamo
+</a>
+{% endblock %}
+
+{% block content %}
+<div class="animate-fade-in">
+  <h1 class="page-title-gradient">Préstamos de Herramientas</h1>
+  <p class="page-subtitle mb-4">Registro de herramientas del pañol asignadas temporalmente al personal.</p>
+</div>
+
+<div class="premium-card animate-fade-in delay-1">
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table class="table table-hover align-middle mb-0">
+        <thead class="bg-light text-muted small text-uppercase fw-semibold" style="letter-spacing:.5px">
+          <tr>
+            <th class="border-0 ps-4 py-3">Fecha</th>
+            <th class="border-0 py-3">Trabajador</th>
+            <th class="border-0 py-3">Herramienta</th>
+            <th class="border-0 py-3 text-center">Estado</th>
+            <th class="border-0 pe-4 py-3 text-end">Acciones / Devolución</th>
+          </tr>
+        </thead>
+        <tbody class="border-top-0">
+          {% for p in prestamos %}
+          <tr>
+            <td class="ps-4">
+              <div class="fw-semibold">{{ p.fecha_prestamo.strftime('%d %b %Y') }}</div>
+              <div class="text-muted small">{{ p.fecha_prestamo.strftime('%H:%M') }}</div>
+            </td>
+            <td>
+              <div class="fw-bold text-dark"><i class="bi bi-person me-1 text-muted"></i>{{ p.trabajador.nombre }}</div>
+              <div class="small text-muted">{{ p.notas or 'Sin notas' }}</div>
+            </td>
+            <td>
+              <div class="fw-bold text-dark">{{ p.herramienta.nombre if p.herramienta else '—' }}</div>
+              <div class="small text-muted">{{ p.herramienta.codigo if p.herramienta else '' }}</div>
+            </td>
+            <td class="text-center">
+              {% if p.estado == 'prestado' %}
+                <span class="badge bg-warning bg-opacity-15 text-warning border border-warning border-opacity-25 rounded-pill px-3 py-2 fs-6">
+                  <i class="bi bi-clock-history me-1"></i>En uso
+                </span>
+              {% else %}
+                <span class="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25 rounded-pill px-3 py-2 fs-6">
+                  <i class="bi bi-check2-all me-1"></i>Devuelto
+                </span>
+                <div class="small text-muted mt-1">{{ p.fecha_devolucion.strftime('%d %b') if p.fecha_devolucion else '' }}</div>
+              {% endif %}
+            </td>
+            <td class="pe-4 text-end">
+              {% if p.estado == 'prestado' %}
+              <button type="button" class="btn btn-sm btn-outline-success" data-bs-toggle="modal" data-bs-target="#devolverModal{{ p.id }}">
+                <i class="bi bi-arrow-return-left me-1"></i>Recibir
+              </button>
+
+              <!-- Modal Devolución -->
+              <div class="modal fade text-start" id="devolverModal{{ p.id }}" tabindex="-1">
+                <div class="modal-dialog modal-dialog-centered">
+                  <div class="modal-content border-0 shadow">
+                    <form action="{{ url_for('mantenimiento.devolver_prestamo', prestamo_id=p.id) }}" method="POST">
+                      <div class="modal-header bg-light border-0">
+                        <h5 class="modal-title fw-bold">Recibir Herramienta</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                      </div>
+                      <div class="modal-body p-4">
+                        <p>Recibiendo <strong>{{ p.herramienta.nombre }}</strong> de <strong>{{ p.trabajador.nombre }}</strong>.</p>
+                        <div class="mb-3">
+                          <label class="form-label fw-semibold text-muted">¿En qué estado se devuelve?</label>
+                          <select name="estado_fisico" class="form-select">
+                            <option value="bueno" {% if p.herramienta and p.herramienta.estado_fisico == 'bueno' %}selected{% endif %}>Bueno</option>
+                            <option value="regular" {% if p.herramienta and p.herramienta.estado_fisico == 'regular' %}selected{% endif %}>Regular</option>
+                            <option value="malo" {% if p.herramienta and p.herramienta.estado_fisico == 'malo' %}selected{% endif %}>Malo (Dañado)</option>
+                          </select>
+                        </div>
+                      </div>
+                      <div class="modal-footer border-0">
+                        <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="submit" class="btn btn-success">Confirmar Devolución</button>
+                      </div>
+                    </form>
+                  </div>
+                </div>
+              </div>
+              {% else %}
+                <span class="text-muted">—</span>
+              {% endif %}
+            </td>
+          </tr>
+          {% else %}
+          <tr>
+            <td colspan="5" class="text-center py-5 text-muted">
+              <i class="bi bi-wrench-adjustable fs-1 text-light d-block mb-2"></i>
+              No hay préstamos registrados aún.
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}

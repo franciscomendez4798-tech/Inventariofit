@@ -1,0 +1,108 @@
+{% extends 'base.html' %}
+{% block title %}Mis Requisiciones — Mantenimiento{% endblock %}
+{% block breadcrumb %}
+  <a href="{{ url_for('mantenimiento.panel') }}" class="text-muted text-decoration-none">Mantenimiento</a>
+  <span class="mx-2 text-muted">&rsaquo;</span>
+  <strong>Mis Requisiciones</strong>
+{% endblock %}
+
+{% block topbar_actions %}
+<a href="{{ url_for('mantenimiento.solicitar_material') }}"
+   class="btn btn-primary d-flex align-items-center gap-2">
+  <i class="bi bi-cart-plus"></i> Nueva Requisición
+</a>
+{% endblock %}
+
+{% block content %}
+<div class="animate-fade-in">
+  <h1 class="page-title-gradient">Mis Requisiciones al Almacén</h1>
+  <p class="page-subtitle mb-4">
+    Historial de solicitudes de material enviadas al administrador del almacén.
+  </p>
+</div>
+
+<div class="premium-card animate-fade-in delay-1">
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table class="table table-hover align-middle mb-0">
+        <thead class="bg-light text-muted small text-uppercase fw-semibold" style="letter-spacing:.5px">
+          <tr>
+            <th class="border-0 ps-4 py-3">Folio</th>
+            <th class="border-0 py-3">Fecha</th>
+            <th class="border-0 py-3 text-center">Artículos</th>
+            <th class="border-0 py-3 text-center">Estado</th>
+            <th class="border-0 py-3 text-end pe-4">Formato</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for p in pedidos %}
+          <tr>
+            <td class="ps-4">
+              <span class="fw-bold font-monospace small">{{ p.folio }}</span>
+            </td>
+            <td class="small text-muted">{{ p.fecha_solicitud.strftime('%d/%m/%Y %H:%M') }}</td>
+            <td class="text-center small">
+              {{ p.detalles|length }} ítem{{ 'es' if p.detalles|length != 1 }}
+            </td>
+            <td class="text-center">
+              {% if p.estado == 'pendiente' %}
+                <span class="badge bg-warning text-dark rounded-pill">Pendiente</span>
+              {% elif p.estado == 'en_revision' %}
+                <span class="badge bg-info rounded-pill">En revisión</span>
+              {% elif p.estado == 'aprobado' %}
+                <span class="badge bg-success rounded-pill">Aprobado</span>
+              {% elif p.estado == 'rechazado' %}
+                <span class="badge bg-danger rounded-pill">Rechazado</span>
+              {% elif p.estado == 'entregado' %}
+                <span class="badge bg-primary rounded-pill">Entregado</span>
+              {% else %}
+                <span class="badge bg-secondary rounded-pill">{{ p.estado }}</span>
+              {% endif %}
+              {% if p.notas_admin %}
+              <div class="text-muted mt-1" style="font-size:.75rem" title="{{ p.notas_admin }}">
+                <i class="bi bi-chat-left-text me-1"></i>Nota del admin
+              </div>
+              {% endif %}
+            </td>
+            <td class="text-end pe-4">
+              {% if formatos[p.id].tiene_pedido %}
+              <a href="{{ url_for('mantenimiento.descargar_requisicion_mant_xlsx', pedido_id=p.id) }}"
+                 class="btn btn-sm btn-outline-success" title="Descargar formato de requisición">
+                <i class="bi bi-file-earmark-excel me-1"></i>Requisición
+              </a>
+              {% else %}
+              <span class="text-muted small">—</span>
+              {% endif %}
+            </td>
+          </tr>
+          {% else %}
+          <tr>
+            <td colspan="5" class="text-center py-5 text-muted">
+              <i class="bi bi-file-earmark-text fs-1 d-block mb-2 text-light"></i>
+              Aún no has enviado ninguna requisición.
+              <a href="{{ url_for('mantenimiento.solicitar_material') }}" class="d-block mt-2">
+                Ir al catálogo →
+              </a>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+{% if pedidos %}
+<div class="d-flex justify-content-between align-items-center mt-3 animate-fade-in delay-2">
+  <div class="small text-muted">
+    Total de requisiciones: <strong>{{ pedidos|length }}</strong>
+  </div>
+  <div class="d-flex gap-2 flex-wrap">
+    <span class="badge bg-warning text-dark">Pendiente: {{ pedidos|selectattr('estado','eq','pendiente')|list|length }}</span>
+    <span class="badge bg-success">Aprobado: {{ pedidos|selectattr('estado','eq','aprobado')|list|length }}</span>
+    <span class="badge bg-primary">Entregado: {{ pedidos|selectattr('estado','eq','entregado')|list|length }}</span>
+    <span class="badge bg-danger">Rechazado: {{ pedidos|selectattr('estado','eq','rechazado')|list|length }}</span>
+  </div>
+</div>
+{% endif %}
+{% endblock %}

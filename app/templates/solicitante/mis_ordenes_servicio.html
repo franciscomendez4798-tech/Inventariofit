@@ -1,0 +1,109 @@
+{% extends 'base.html' %}
+{% block title %}Mis Órdenes de Servicio{% endblock %}
+{% block breadcrumb %}
+  <span class="text-muted">Mi Portal</span> <span class="mx-1 text-muted">/</span>
+  <strong>Mis Órdenes de Servicio</strong>
+{% endblock %}
+
+{% block content %}
+<div class="animate-fade-in">
+  <div class="d-flex align-items-center justify-content-between mb-4">
+    <div>
+      <h1 class="page-title-gradient mb-1">Mis Órdenes de Servicio</h1>
+      <p class="page-subtitle">Historial de solicitudes de mantenimiento enviadas.</p>
+    </div>
+    <a href="{{ url_for('solicitante.solicitar_mantenimiento') }}" class="btn btn-danger">
+      <i class="bi bi-plus-circle me-2"></i>Nueva Solicitud
+    </a>
+  </div>
+
+  {% if not ordenes %}
+  <div class="premium-card text-center py-5">
+    <i class="bi bi-tools display-4 text-muted mb-3 d-block"></i>
+    <h5 class="text-muted">Aún no tienes órdenes de servicio</h5>
+    <p class="text-muted">Cuando necesites un servicio de mantenimiento, usa el botón de arriba.</p>
+    <a href="{{ url_for('solicitante.solicitar_mantenimiento') }}" class="btn btn-danger mt-2">
+      <i class="bi bi-plus-circle me-2"></i>Solicitar Mantenimiento
+    </a>
+  </div>
+  {% else %}
+
+  {% set badge_color = {
+    'solicitada': 'primary',
+    'en_proceso': 'warning',
+    'completada': 'success',
+    'no_realizada': 'danger',
+    'entregada': 'dark',
+  } %}
+  {% set badge_label = {
+    'solicitada': 'Enviada',
+    'en_proceso': 'En proceso',
+    'completada': 'Completada',
+    'no_realizada': 'No realizada',
+    'entregada': 'Entregada',
+  } %}
+
+  <div class="row g-3">
+    {% for orden in ordenes %}
+    <div class="col-12">
+      <div class="premium-card">
+        <div class="card-body p-3 p-md-4">
+          <div class="d-flex flex-wrap align-items-start justify-content-between gap-2">
+            <div>
+              <span class="badge bg-{{ badge_color.get(orden.estado, 'secondary') }} mb-1">
+                {{ badge_label.get(orden.estado, orden.estado) }}
+              </span>
+              <h6 class="fw-bold mb-1 font-monospace">{{ orden.folio }}</h6>
+              <div class="text-muted small">
+                <i class="bi bi-calendar3 me-1"></i>
+                {{ orden.fecha_solicitud.strftime('%d/%m/%Y %H:%M') }}
+                &nbsp;·&nbsp;
+                <span class="text-capitalize">{{ orden.tipo_mantenimiento }}</span>
+                &nbsp;·&nbsp;
+                {{ orden.servicios_texto() or '—' }}
+              </div>
+              <p class="mt-2 mb-0 text-secondary" style="font-size:.9rem;">
+                {{ orden.descripcion[:120] }}{% if orden.descripcion|length > 120 %}…{% endif %}
+              </p>
+            </div>
+            <div class="d-flex gap-2 flex-wrap">
+              {% if orden.estado == 'entregada' and orden.archivo_docx_path %}
+              <a href="{{ url_for('solicitante.descargar_orden_servicio', orden_id=orden.id) }}"
+                 class="btn btn-sm btn-outline-danger">
+                <i class="bi bi-file-earmark-pdf me-1"></i>Descargar PDF
+              </a>
+              {% endif %}
+              {% if orden.estado == 'entregada' and not orden.encuesta_completada %}
+              <a href="{{ url_for('solicitante.encuesta_satisfaccion', orden_id=orden.id) }}"
+                 class="btn btn-sm btn-warning">
+                <i class="bi bi-star me-1"></i>Evaluar servicio
+              </a>
+              {% elif orden.encuesta_completada %}
+              <span class="badge bg-success py-2 px-3">
+                <i class="bi bi-star-fill me-1"></i>Encuesta completada
+              </span>
+              {% endif %}
+            </div>
+          </div>
+
+          {% if orden.estado in ('completada', 'no_realizada', 'entregada') and orden.fecha_ejecucion %}
+          <hr class="my-2">
+          <div class="small text-muted">
+            <i class="bi bi-calendar-check me-1"></i>
+            Ejecutado: {{ orden.fecha_ejecucion.strftime('%d/%m/%Y') }}
+            {% if orden.servicio_realizado == False %}
+            &nbsp;·&nbsp;<span class="text-danger">No realizado — {{ orden.motivo_no_realizado or '' }}</span>
+            {% endif %}
+            {% if orden.nombre_realizo %}
+            &nbsp;·&nbsp;Realizó: <strong>{{ orden.nombre_realizo }}</strong>
+            {% endif %}
+          </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

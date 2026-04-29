@@ -1,0 +1,102 @@
+{% extends 'base.html' %}
+{% block title %}Personal de Mantenimiento{% endblock %}
+{% block breadcrumb %}
+  <span class="text-muted">Pañol</span> <span class="mx-2 text-muted">&rsaquo;</span> <strong>Personal</strong>
+{% endblock %}
+
+{% block topbar_actions %}
+<a href="{{ url_for('mantenimiento.personal_form') }}" class="btn btn-primary d-flex align-items-center gap-2 px-3">
+  <i class="bi bi-plus-lg"></i> Nuevo trabajador
+</a>
+{% endblock %}
+
+{% block content %}
+<div class="animate-fade-in">
+  <div class="maintenance-header mb-4">
+      <h2 class="h3 fw-bold text-dark mb-1">Personal de Mantenimiento</h2>
+      <p class="text-muted">Técnicos e intendentes registrados.</p>
+  </div>
+
+  <div class="card premium-card border-0 shadow-sm delay-1">
+    <div class="card-body p-0">
+      <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0 border-0">
+          <thead class="bg-light text-muted small text-uppercase fw-semibold" style="letter-spacing: 0.5px;">
+            <tr>
+              <th class="border-0 ps-4 py-3">Nombre</th>
+              <th class="border-0 py-3">Cargo</th>
+              <th class="border-0 py-3">Área</th>
+              <th class="border-0 py-3">Estado</th>
+              <th class="border-0 py-3 text-end pe-4">Acciones y Formatos</th>
+            </tr>
+          </thead>
+          <tbody class="border-top-0">
+            {% for t in trabajadores %}
+            <tr>
+              <td class="ps-4">
+                <div class="fw-bold text-dark">{{ t.nombre }}</div>
+              </td>
+              <td>
+                <span class="text-muted">{{ t.cargo }}</span>
+              </td>
+              <td>
+                {% if t.area %}
+                  <span class="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25 rounded-pill px-2 py-1">
+                    <i class="bi bi-geo-alt me-1"></i>{{ t.area }}
+                  </span>
+                {% else %}
+                  <span class="text-muted small">—</span>
+                {% endif %}
+              </td>
+              <td>
+                {% if t.activo %}
+                  <span class="badge bg-success bg-opacity-10 text-success px-2 py-1 border border-success border-opacity-25 rounded-pill">Activo</span>
+                {% else %}
+                  <span class="badge bg-secondary bg-opacity-10 text-secondary px-2 py-1 border border-secondary border-opacity-25 rounded-pill">Inactivo</span>
+                {% endif %}
+              </td>
+              <td class="text-end pe-4">
+                <div class="d-flex justify-content-end gap-2 flex-wrap">
+                  <a href="{{ url_for('mantenimiento.estadisticas_trabajador', trab_id=t.id) }}"
+                     class="btn btn-sm btn-outline-primary d-flex align-items-center gap-1"
+                     title="Ver estadísticas del trabajador">
+                    <i class="bi bi-bar-chart-line"></i> Estadísticas
+                  </a>
+                  <a href="{{ url_for('mantenimiento.formato_pedido_trabajador', trab_id=t.id) }}"
+                     class="btn btn-sm btn-outline-success d-flex align-items-center gap-1"
+                     title="Descargar Formato Requisición Excel (R-AP-33-01-01)">
+                    <i class="bi bi-file-earmark-excel"></i> Requisición
+                  </a>
+                  <a href="{{ url_for('mantenimiento.formato_salida_trabajador', trab_id=t.id) }}"
+                     class="btn btn-sm btn-outline-secondary d-flex align-items-center gap-1"
+                     title="Descargar Formato Salida Excel (R-AP-33-01-02)">
+                    <i class="bi bi-file-earmark-excel"></i> Salida
+                  </a>
+                  <a href="{{ url_for('mantenimiento.firma_trabajador', trab_id=t.id) }}"
+                     class="btn btn-sm {% if t.firma_trabajador %}btn-success{% else %}btn-outline-dark{% endif %}"
+                     title="{% if t.firma_trabajador %}Actualizar firma{% else %}Registrar firma{% endif %}">
+                    <i class="bi bi-pen"></i>
+                    {% if t.firma_trabajador %}<i class="bi bi-check-circle-fill ms-1" style="font-size:.7rem;"></i>{% endif %}
+                  </a>
+                  <a href="{{ url_for('mantenimiento.personal_form', trab_id=t.id) }}"
+                     class="btn btn-sm btn-light border" title="Editar">
+                    <i class="bi bi-pencil"></i>
+                  </a>
+                </div>
+              </td>
+            </tr>
+            {% else %}
+            <tr>
+              <td colspan="5" class="text-center py-5 text-muted">
+                <div class="mb-2"><i class="bi bi-people fs-1 text-light"></i></div>
+                Sin personal registrado.
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

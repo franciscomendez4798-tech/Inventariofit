@@ -1,0 +1,25 @@
+# Entorno Python
+venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+
+# Variables de entorno (NUNCA al repo)
+.env
+
+# Base de datos local de desarrollo
+instance/
+*.db
+*.sqlite3
+
+# Archivos generados
+app/static/uploads/
+*.xlsx
+*.pdf
+
+# macOS
+.DS_Store
+
+# IDEs
+.vscode/
+.idea/

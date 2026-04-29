@@ -1,0 +1,259 @@
+{% extends 'base.html' %}
+{% block title %}Solicitar Material — Almacén{% endblock %}
+{% block breadcrumb %}
+  <a href="{{ url_for('mantenimiento.panel') }}" class="text-muted text-decoration-none">Mantenimiento</a>
+  <span class="mx-2 text-muted">&rsaquo;</span>
+  <strong>Solicitar Material</strong>
+{% endblock %}
+
+{% block topbar_actions %}
+<div class="d-flex gap-2">
+  <a href="{{ url_for('mantenimiento.mis_requisiciones_mant') }}"
+     class="btn btn-outline-secondary d-flex align-items-center gap-1">
+    <i class="bi bi-file-earmark-text"></i> Mis Requisiciones
+  </a>
+  <button class="btn btn-primary d-flex align-items-center gap-2"
+          data-bs-toggle="offcanvas" data-bs-target="#offcanvasCarrito">
+    <i class="bi bi-cart3"></i> Ver pedido
+    <span class="badge bg-light text-dark ms-1" id="contadorCarrito">0</span>
+  </button>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="animate-fade-in">
+  <h1 class="page-title-gradient">Solicitar Material al Almacén</h1>
+  <p class="page-subtitle mb-4">
+    <i class="bi bi-info-circle me-1"></i>
+    Selecciona los materiales que necesitas. Tu solicitud será revisada por el administrador.
+    {% if departamento %}<strong>Departamento:</strong> {{ departamento.nombre }}{% endif %}
+  </p>
+</div>
+
+{% if not catalogo %}
+<div class="premium-card animate-fade-in delay-1">
+  <div class="card-body text-center py-5 text-muted">
+    <i class="bi bi-inbox fs-1 d-block mb-3 text-light"></i>
+    <p class="mb-1 fw-semibold">No hay materiales disponibles en este momento.</p>
+    <p class="small">Contacta al administrador para que configure las categorías de tu departamento.</p>
+  </div>
+</div>
+{% else %}
+
+<!-- Buscador -->
+<div class="premium-card mb-4 animate-fade-in delay-1">
+  <div class="card-body p-3">
+    <div class="input-group">
+      <span class="input-group-text bg-transparent border-end-0">
+        <i class="bi bi-search text-muted"></i>
+      </span>
+      <input type="text" id="buscarMaterial" class="form-control border-start-0"
+             placeholder="Buscar material…">
+    </div>
+  </div>
+</div>
+
+<!-- Catálogo agrupado -->
+{% for categoria, items in catalogo.items() %}
+<div class="mb-4 categoria-bloque animate-fade-in delay-2" data-categoria="{{ categoria }}">
+  <h5 class="fw-bold mb-3" style="color:var(--color-primary)">
+    <i class="bi bi-tag me-2"></i>{{ categoria }}
+  </h5>
+  <div class="row g-3">
+    {% for mat in items %}
+    <div class="col-sm-6 col-md-4 col-lg-3 material-card-wrap" data-nombre="{{ mat.nombre|lower }}">
+      <div class="premium-card h-100">
+        <div class="card-body d-flex flex-column gap-3 p-3">
+
+          <!-- Imagen / Placeholder -->
+          <div class="rounded d-flex align-items-center justify-content-center"
+               style="height:80px;background:var(--color-bg-2)">
+            {% if mat.imagen_url %}
+              <img src="{{ url_for('static', filename=mat.imagen_url) }}"
+                   alt="{{ mat.nombre }}" class="img-fluid" style="max-height:76px;object-fit:contain">
+            {% else %}
+              <i class="bi bi-box-seam fs-2 text-muted"></i>
+            {% endif %}
+          </div>
+
+          <!-- Nombre y categoría (SIN precio) -->
+          <div class="flex-fill">
+            <div class="fw-bold text-dark small">{{ mat.nombre }}</div>
+            <div class="text-muted" style="font-size:.75rem">
+              <i class="bi bi-tag-fill me-1"></i>{{ mat.categoria.nombre }}
+            </div>
+            <div class="mt-1">
+              <span class="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25 rounded-pill px-2" style="font-size:.72rem">
+                Disponible
+              </span>
+            </div>
+          </div>
+
+          <!-- Cantidad + Agregar -->
+          <div class="d-flex align-items-center gap-2">
+            <input type="number" class="form-control form-control-sm qty-input"
+                   data-id="{{ mat.id }}"
+                   data-nombre="{{ mat.nombre }}"
+                   data-unidad="{{ mat.unidad_medida }}"
+                   data-max="{{ mat.stock_actual }}"
+                   value="1" min="1" max="{{ mat.stock_actual }}"
+                   style="width:70px">
+            <button class="btn btn-sm btn-primary flex-fill btn-agregar" data-id="{{ mat.id }}">
+              <i class="bi bi-plus me-1"></i>Agregar
+            </button>
+          </div>
+
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+{% endfor %}
+{% endif %}
+
+<!-- ══════════════════════════════════════════════════════
+     OFFCANVAS: CARRITO / PEDIDO
+══════════════════════════════════════════════════════ -->
+<div class="offcanvas offcanvas-end" tabindex="-1" id="offcanvasCarrito" style="width:400px">
+  <div class="offcanvas-header border-bottom">
+    <h5 class="offcanvas-title fw-bold">
+      <i class="bi bi-cart3 me-2 text-primary"></i>Mi Requisición
+    </h5>
+    <button type="button" class="btn-close" data-bs-dismiss="offcanvas"></button>
+  </div>
+  <div class="offcanvas-body d-flex flex-column">
+
+    <div id="carritoVacio" class="text-center text-muted py-5">
+      <i class="bi bi-cart-x fs-2 d-block mb-2"></i>No has agregado materiales todavía.
+    </div>
+
+    <div id="carritoItems" style="display:none;flex:1;overflow-y:auto"></div>
+
+    <form method="POST" action="{{ url_for('mantenimiento.nueva_requisicion_mant') }}"
+          id="formRequisicion" style="display:none">
+      <hr>
+      <div class="mb-3">
+        <label class="form-label fw-semibold">Notas para el administrador</label>
+        <textarea name="notas_solicitante" class="form-control" rows="3"
+                  placeholder="Actividad de mantenimiento, urgencia, ubicación…"></textarea>
+      </div>
+      <div id="camposOcultos"></div>
+      <button type="submit" class="btn btn-primary w-100">
+        <i class="bi bi-send me-2"></i>Enviar Requisición
+      </button>
+    </form>
+
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let carrito = {};
+
+function actualizarCarritoUI() {
+  const ids   = Object.keys(carrito);
+  const count = ids.reduce((s, k) => s + carrito[k].cantidad, 0);
+  document.getElementById('contadorCarrito').textContent = count;
+
+  const vacio  = document.getElementById('carritoVacio');
+  const items  = document.getElementById('carritoItems');
+  const form   = document.getElementById('formRequisicion');
+  const hidden = document.getElementById('camposOcultos');
+
+  if (ids.length === 0) {
+    vacio.style.display = '';
+    items.style.display = 'none';
+    form.style.display  = 'none';
+    return;
+  }
+
+  vacio.style.display = 'none';
+  items.style.display = '';
+  form.style.display  = '';
+
+  items.innerHTML = ids.map(id => {
+    const it = carrito[id];
+    return `
+      <div class="d-flex align-items-center gap-2 py-2 border-bottom">
+        <div style="flex:1">
+          <div class="fw-semibold small">${it.nombre}</div>
+          <div class="text-muted" style="font-size:.75rem">${it.unidad}</div>
+        </div>
+        <input type="number" value="${it.cantidad}" min="1" max="${it.max}"
+               class="form-control form-control-sm qty-carrito" data-id="${id}" style="width:70px">
+        <button class="btn btn-sm btn-outline-danger btn-eliminar" data-id="${id}">
+          <i class="bi bi-trash"></i>
+        </button>
+      </div>`;
+  }).join('');
+
+  hidden.innerHTML = ids.map(id => `
+    <input type="hidden" name="material_id" value="${id}">
+    <input type="hidden" name="cantidad"    value="${carrito[id].cantidad}" id="hid_${id}">
+  `).join('');
+
+  items.querySelectorAll('.qty-carrito').forEach(inp => {
+    inp.addEventListener('change', () => {
+      const id = inp.dataset.id;
+      const v  = Math.max(1, Math.min(parseInt(inp.value)||1, carrito[id].max));
+      carrito[id].cantidad = v;
+      inp.value = v;
+      const hid = document.getElementById(`hid_${id}`);
+      if (hid) hid.value = v;
+      document.getElementById('contadorCarrito').textContent =
+        Object.values(carrito).reduce((s,x) => s + x.cantidad, 0);
+    });
+  });
+
+  items.querySelectorAll('.btn-eliminar').forEach(btn => {
+    btn.addEventListener('click', () => {
+      delete carrito[btn.dataset.id];
+      actualizarCarritoUI();
+    });
+  });
+}
+
+document.querySelectorAll('.btn-agregar').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const id   = btn.dataset.id;
+    const inp  = document.querySelector(`.qty-input[data-id="${id}"]`);
+    const cant = Math.max(1, parseInt(inp.value) || 1);
+    const max  = parseInt(inp.dataset.max);
+
+    if (carrito[id]) {
+      carrito[id].cantidad = Math.min(carrito[id].cantidad + cant, max);
+    } else {
+      carrito[id] = {
+        nombre: inp.dataset.nombre,
+        unidad: inp.dataset.unidad,
+        cantidad: Math.min(cant, max),
+        max,
+      };
+    }
+    inp.value = 1;
+    actualizarCarritoUI();
+
+    btn.innerHTML = '<i class="bi bi-check me-1"></i>Agregado';
+    btn.classList.replace('btn-primary', 'btn-success');
+    setTimeout(() => {
+      btn.innerHTML = '<i class="bi bi-plus me-1"></i>Agregar';
+      btn.classList.replace('btn-success', 'btn-primary');
+    }, 1200);
+  });
+});
+
+document.getElementById('buscarMaterial')?.addEventListener('input', function() {
+  const q = this.value.toLowerCase();
+  document.querySelectorAll('.material-card-wrap').forEach(card => {
+    card.style.display = card.dataset.nombre.includes(q) ? '' : 'none';
+  });
+  document.querySelectorAll('.categoria-bloque').forEach(bloque => {
+    const visibles = [...bloque.querySelectorAll('.material-card-wrap')]
+                     .filter(c => c.style.display !== 'none');
+    bloque.style.display = visibles.length ? '' : 'none';
+  });
+});
+</script>
+{% endblock %}

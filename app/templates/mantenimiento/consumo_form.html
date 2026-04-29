@@ -1,0 +1,106 @@
+{% extends 'base.html' %}
+{% block title %}Nuevo Consumo{% endblock %}
+{% block breadcrumb %}
+  <span class="text-muted">Mantenimiento</span> <span class="mx-1 text-muted">/</span>
+  <a href="{{ url_for('mantenimiento.consumos') }}" class="text-muted text-decoration-none">Consumos</a>
+  <span class="mx-1 text-muted">/</span> <strong>Nuevo</strong>
+{% endblock %}
+
+{% block content %}
+<div class="animate-fade-in" style="max-width: 640px; margin: 0 auto;">
+  <h1 class="page-title-gradient">Registrar Consumo</h1>
+  <p class="page-subtitle mb-4">Registra la salida directa de materiales por actividad de mantenimiento.</p>
+
+  <div class="premium-card">
+    <div class="card-body p-4">
+      <form method="POST" action="{{ url_for('mantenimiento.consumo_form') }}">
+
+        <div class="mb-4">
+          <label for="id_material" class="form-label fw-semibold">
+            Material / Herramienta <span class="text-danger">*</span>
+          </label>
+          <select name="id_material" id="id_material" class="form-select" required>
+            <option value="">— Selecciona un material —</option>
+            {% for m in materiales %}
+            <option value="{{ m.id }}" data-stock="{{ m.cantidad }}" data-unidad="{{ m.unidad_medida }}">
+              {{ m.nombre }} (Disponible: {{ m.cantidad }} {{ m.unidad_medida }})
+            </option>
+            {% endfor %}
+          </select>
+          {% if not materiales %}
+          <div class="alert alert-warning mt-2 py-2">
+            <i class="bi bi-exclamation-triangle me-2"></i>
+            No hay materiales con stock disponible.
+          </div>
+          {% endif %}
+        </div>
+
+        <!-- Info rápida del material seleccionado -->
+        <div id="infoMaterial" class="alert alert-info d-none mb-4 py-2">
+          <i class="bi bi-info-circle me-2"></i>
+          Disponible: <strong id="stockActual">—</strong>
+          <span id="unidadMaterial"></span>
+        </div>
+
+        <div class="mb-4">
+          <label for="cantidad" class="form-label fw-semibold">
+            Cantidad consumida <span class="text-danger">*</span>
+          </label>
+          <input type="number" name="cantidad" id="cantidad" class="form-control"
+                 min="1" required placeholder="ej. 5">
+          <div class="form-text">No puede superar el stock disponible del material seleccionado.</div>
+        </div>
+
+        <div class="mb-4">
+          <label for="id_trabajador" class="form-label fw-semibold">Técnico responsable</label>
+          <select name="id_trabajador" id="id_trabajador" class="form-select">
+            <option value="">— Sin asignar —</option>
+            {% for t in trabajadores %}
+            <option value="{{ t.id }}">{{ t.nombre }} — {{ t.cargo }}</option>
+            {% endfor %}
+          </select>
+          <div class="form-text">Opcional. Se añadirá automáticamente al registro del motivo.</div>
+        </div>
+
+        <div class="mb-4">
+          <label for="motivo" class="form-label fw-semibold">Descripción de la actividad</label>
+          <input type="text" name="motivo" id="motivo" class="form-control"
+                 placeholder="Mantenimiento preventivo sala B, reparación bomba…">
+          <div class="form-text">Describe brevemente el uso o la actividad que genera este consumo.</div>
+        </div>
+
+        <div class="d-flex gap-3">
+          <button type="submit" class="btn btn-warning text-dark px-4">
+            <i class="bi bi-dash-circle me-2"></i>Registrar consumo
+          </button>
+          <a href="{{ url_for('mantenimiento.consumos') }}" class="btn btn-outline-secondary">
+            Cancelar
+          </a>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const selectMat = document.getElementById('id_material');
+const inputCant = document.getElementById('cantidad');
+const infoBox   = document.getElementById('infoMaterial');
+
+selectMat.addEventListener('change', function() {
+  const opt = this.options[this.selectedIndex];
+  if (this.value) {
+    const stock = parseInt(opt.dataset.stock);
+    document.getElementById('stockActual').textContent = stock;
+    document.getElementById('unidadMaterial').textContent = ' ' + opt.dataset.unidad;
+    inputCant.max = stock;
+    infoBox.classList.remove('d-none');
+  } else {
+    infoBox.classList.add('d-none');
+    inputCant.removeAttribute('max');
+  }
+});
+</script>
+{% endblock %}

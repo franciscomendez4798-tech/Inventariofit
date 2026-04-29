@@ -1,0 +1,91 @@
+{% extends 'base.html' %}
+{% block title %}Devolución — {{ prestamo.dispositivo.nombre }}{% endblock %}
+{% block breadcrumb %}
+  <a href="{{ url_for('mantenimiento.audiovisual') }}" class="text-muted text-decoration-none">Audiovisual</a>
+  <span class="mx-1 text-muted">/</span><strong>Recibir Devolución</strong>
+{% endblock %}
+
+{% block content %}
+<div class="animate-fade-in" style="max-width:580px; margin:0 auto;">
+  <h1 class="page-title-gradient">Recibir Devolución</h1>
+
+  {# Resumen del préstamo #}
+  <div class="premium-card mb-4">
+    <div class="card-body p-4">
+      <h6 class="fw-bold mb-3 text-muted">Detalle del préstamo</h6>
+      <div class="row g-2 small">
+        <div class="col-6"><span class="text-muted">Dispositivo:</span><br>
+          <strong>{{ prestamo.dispositivo.nombre }}</strong> — {{ prestamo.dispositivo.aula }}</div>
+        <div class="col-6"><span class="text-muted">Alumno:</span><br>
+          <strong>{{ prestamo.nombre_alumno }}</strong></div>
+        <div class="col-6"><span class="text-muted">Matrícula:</span><br>
+          {{ prestamo.matricula or '—' }}</div>
+        <div class="col-6"><span class="text-muted">Teléfono:</span><br>
+          {{ prestamo.telefono or '—' }}</div>
+        <div class="col-6"><span class="text-muted">Préstamo:</span><br>
+          {{ prestamo.fecha_prestamo.strftime('%d/%m/%Y %H:%M') }}</div>
+        <div class="col-6">
+          <span class="text-muted">Devolución esperada:</span><br>
+          {% set ahora = now %}
+          {% if prestamo.hora_devolucion_esperada < ahora %}
+          <strong class="text-danger">
+            {{ prestamo.hora_devolucion_esperada.strftime('%H:%M') }}
+            <span class="badge bg-danger ms-1">TARDE</span>
+          </strong>
+          {% else %}
+          <strong class="text-success">{{ prestamo.hora_devolucion_esperada.strftime('%H:%M') }}</strong>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <form method="POST">
+    <div class="premium-card mb-4">
+      <div class="card-body p-4">
+        <h6 class="fw-bold mb-3">¿El equipo fue devuelto en buen estado?</h6>
+
+        <div class="d-flex gap-3 mb-3">
+          <div class="form-check">
+            <input class="form-check-input" type="radio" name="condicion"
+                   id="cond_ok" value="ok" required onchange="toggleSancion(false)">
+            <label class="form-check-label fw-semibold text-success" for="cond_ok">
+              <i class="bi bi-check-circle-fill me-1"></i>Sí, todo bien
+            </label>
+          </div>
+          <div class="form-check">
+            <input class="form-check-input" type="radio" name="condicion"
+                   id="cond_mal" value="dano" onchange="toggleSancion(true)">
+            <label class="form-check-label fw-semibold text-danger" for="cond_mal">
+              <i class="bi bi-exclamation-triangle-fill me-1"></i>No, hay un problema
+            </label>
+          </div>
+        </div>
+
+        <div id="sancion_div" class="d-none">
+          <label class="form-label fw-semibold text-danger">
+            <i class="bi bi-shield-exclamation me-1"></i>Describe el daño o problema (se registrará sanción)
+          </label>
+          <textarea name="nota_sancion" rows="3" class="form-control border-danger"
+                    placeholder="Describe el estado del equipo, daño observado…"></textarea>
+        </div>
+      </div>
+    </div>
+
+    <div class="d-flex gap-3">
+      <button type="submit" class="btn btn-dark px-5">
+        <i class="bi bi-box-arrow-in-down-left me-2"></i>Confirmar devolución
+      </button>
+      <a href="{{ url_for('mantenimiento.audiovisual') }}" class="btn btn-outline-secondary">Cancelar</a>
+    </div>
+  </form>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function toggleSancion(show) {
+  document.getElementById('sancion_div').classList.toggle('d-none', !show);
+}
+</script>
+{% endblock %}

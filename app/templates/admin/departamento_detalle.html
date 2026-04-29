@@ -1,0 +1,217 @@
+{# templates/admin/departamento_detalle.html #}
+{% extends "base.html" %}
+{% block title %}{{ departamento.nombre }}{% endblock %}
+
+{% block breadcrumb %}
+  <a href="{{ url_for('admin.departamentos') }}" class="text-decoration-none text-muted">Departamentos</a>
+  &rsaquo; <strong>{{ departamento.nombre }}</strong>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-start mb-1 flex-wrap gap-2">
+  <div>
+    <h1 class="page-title">{{ departamento.nombre }}</h1>
+    <p class="page-subtitle">
+      <span class="badge rounded-pill" style="background:var(--color-primary-light);color:var(--color-primary);font-weight:600">
+        {{ departamento.codigo }}
+      </span>
+      {% if departamento.descripcion %}
+      — {{ departamento.descripcion }}
+      {% endif %}
+    </p>
+  </div>
+  <a href="{{ url_for('admin.departamento_form', depto_id=departamento.id) }}" 
+     class="btn btn-sm btn-outline-primary">
+    <i class="bi bi-pencil me-1"></i>Editar
+  </a>
+</div>
+
+<!-- ── Stat Cards ──────────────────────────────────────────── -->
+<div class="row g-3 mb-4">
+  <div class="col-6 col-md-3">
+    <div class="stat-card">
+      <div class="stat-icon bordo"><i class="bi bi-clipboard-data"></i></div>
+      <div>
+        <div class="stat-value">{{ total_pedidos }}</div>
+        <div class="stat-label">Total pedidos</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="stat-card">
+      <div class="stat-icon verde"><i class="bi bi-check-circle"></i></div>
+      <div>
+        <div class="stat-value">{{ pedidos_aprobados }}</div>
+        <div class="stat-label">Aprobados</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="stat-card">
+      <div class="stat-icon dorado"><i class="bi bi-hourglass-split"></i></div>
+      <div>
+        <div class="stat-value">{{ pedidos_pendientes }}</div>
+        <div class="stat-label">Pendientes</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="stat-card">
+      <div class="stat-icon rojo"><i class="bi bi-currency-dollar"></i></div>
+      <div>
+        <div class="stat-value">${{ "%.2f"|format(costo_total) }}</div>
+        <div class="stat-label">Costo total</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="row g-3 mb-4">
+  <!-- ── Encargados ──────────────────────────────────────── -->
+  <div class="col-12 col-lg-4">
+    <div class="card h-100">
+      <div class="card-header">
+        <i class="bi bi-people me-2"></i>Encargados
+      </div>
+      <div class="card-body">
+        {% if encargados %}
+        {% for u in encargados %}
+        <div class="d-flex align-items-center gap-2 {% if not loop.last %}mb-2 pb-2 border-bottom{% endif %}">
+          <div class="sidebar-user-avatar" style="width:32px;height:32px;font-size:.75rem;background:var(--color-primary)">
+            {{ u.nombre_completo[0].upper() }}
+          </div>
+          <div style="flex:1;min-width:0">
+            <div class="fw-semibold small">{{ u.nombre_completo }}</div>
+            <div class="text-muted" style="font-size:.72rem">{{ u.email }}</div>
+          </div>
+          <span class="badge {{ 'bg-success' if u.activo else 'bg-secondary' }}" style="font-size:.6rem">
+            {{ 'Activo' if u.activo else 'Inactivo' }}
+          </span>
+        </div>
+        {% endfor %}
+        {% else %}
+        <div class="text-center text-muted small py-3">
+          <i class="bi bi-person-x d-block fs-4 mb-1"></i>
+          Sin encargados asignados
+        </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Categorías permitidas ───────────────────────────── -->
+  <div class="col-12 col-lg-4">
+    <div class="card h-100">
+      <div class="card-header">
+        <i class="bi bi-tag me-2"></i>Categorías permitidas
+      </div>
+      <div class="card-body">
+        {% if departamento.categorias %}
+        {% for cat in departamento.categorias %}
+        <div class="d-flex align-items-center gap-2 {% if not loop.last %}mb-2{% endif %}">
+          <i class="bi bi-tag-fill" style="color:var(--color-primary)"></i>
+          <span class="small">{{ cat.nombre }}</span>
+          {% if cat.descripcion %}
+          <span class="text-muted small">— {{ cat.descripcion|truncate(40) }}</span>
+          {% endif %}
+        </div>
+        {% endfor %}
+        {% else %}
+        <div class="text-center text-muted small py-3">Sin categorías asignadas</div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Resumen de costos ───────────────────────────────── -->
+  <div class="col-12 col-lg-4">
+    <div class="card h-100">
+      <div class="card-header">
+        <i class="bi bi-cash-stack me-2"></i>Resumen de costos
+      </div>
+      <div class="card-body">
+        {% if costos_por_pedido %}
+        <div class="small">
+          <div class="d-flex justify-content-between fw-semibold mb-2 pb-2 border-bottom">
+            <span>Pedidos aprobados:</span>
+            <span>{{ costos_por_pedido|length }}</span>
+          </div>
+          <div class="d-flex justify-content-between fw-semibold mb-2 pb-2 border-bottom">
+            <span>Costo total:</span>
+            <span style="color:var(--color-primary)">${{ "%.2f"|format(costo_total) }}</span>
+          </div>
+          <div class="d-flex justify-content-between text-muted">
+            <span>Promedio por pedido:</span>
+            <span>${{ "%.2f"|format(costo_total / costos_por_pedido|length) }}</span>
+          </div>
+        </div>
+        {% else %}
+        <div class="text-center text-muted small py-3">Sin pedidos aprobados todavía</div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Historial de pedidos ───────────────────────────────── -->
+<div class="card">
+  <div class="card-header d-flex align-items-center justify-content-between">
+    <span><i class="bi bi-clock-history me-2"></i>Historial de pedidos</span>
+    <span class="small text-muted">{{ total_pedidos }} pedido{{ 's' if total_pedidos != 1 }}</span>
+  </div>
+  <div class="card-body p-0">
+    {% if not pedidos %}
+    <div class="text-center py-4 text-muted">
+      <i class="bi bi-inbox fs-3 d-block mb-2"></i>
+      Este departamento no tiene pedidos.
+    </div>
+    {% else %}
+    <div class="table-responsive">
+      <table class="table table-sm mb-0">
+        <thead>
+          <tr>
+            <th>Folio</th>
+            <th>Fecha</th>
+            <th>Solicitante</th>
+            <th class="text-center">Artículos</th>
+            <th>Estado</th>
+            <th class="text-end">Costo</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for p in pedidos %}
+          <tr>
+            <td>
+              <a href="{{ url_for('admin.revisar_pedido', pedido_id=p.id) }}" 
+                 class="fw-bold font-monospace small text-decoration-none">
+                {{ p.folio }}
+              </a>
+            </td>
+            <td class="small text-muted">{{ p.fecha_solicitud.strftime('%d/%m/%Y %H:%M') }}</td>
+            <td class="small">{{ p.solicitante.nombre_completo.split()[0] }}</td>
+            <td class="text-center small">{{ p.detalles|length }}</td>
+            <td>
+              <span class="badge-estado estado-{{ p.estado }}">
+                {{ p.estado.replace('_', ' ') }}
+              </span>
+            </td>
+            <td class="text-end small font-monospace">
+              {% if p.estado in ('aprobado', 'modificado', 'entregado') %}
+                {% set costo = namespace(total=0) %}
+                {% for d in p.detalles %}
+                  {% set costo.total = costo.total + (d.cantidad_aprobada or 0) * (d.precio_unitario_ref|float or 0) %}
+                {% endfor %}
+                ${{ "%.2f"|format(costo.total) }}
+              {% else %}
+                <span class="text-muted">—</span>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

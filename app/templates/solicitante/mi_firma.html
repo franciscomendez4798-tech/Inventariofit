@@ -1,0 +1,36 @@
+{% extends 'base.html' %}
+{% block title %}Mi Firma Digital{% endblock %}
+{% block breadcrumb %}
+  <span class="text-muted">Mi Portal</span> <span class="mx-1 text-muted">/</span>
+  <strong>Mi Firma Digital</strong>
+{% endblock %}
+
+{% block content %}
+<div class="animate-fade-in" style="max-width:580px; margin:0 auto;">
+  <h1 class="page-title-gradient">Mi Firma Digital</h1>
+  <p class="page-subtitle mb-4">
+    Tu firma se usará en las Órdenes de Servicio de Mantenimiento como "Conformidad del solicitante".
+  </p>
+
+  {% if firma_obj %}
+  <div class="alert alert-success d-flex align-items-center mb-4">
+    <i class="bi bi-check-circle-fill me-2"></i>
+    Tienes una firma guardada. Puedes reemplazarla dibujando una nueva.
+  </div>
+  <div class="premium-card mb-4">
+    <div class="card-body p-3 text-center">
+      <p class="text-muted small mb-2">Firma actual:</p>
+      <img src="{{ firma_obj.firma_b64 }}" alt="Mi firma"
+           class="border rounded" style="max-height:100px; max-width:100%;">
+    </div>
+  </div>
+  {% endif %}
+
+  <form method="POST">
+    {% include 'shared/firma_pad.html' %}
+    <button type="submit" class="btn btn-danger px-5">
+      <i class="bi bi-floppy me-2"></i>Guardar firma
+    </button>
+  </form>
+</div>
+{% endblock %}

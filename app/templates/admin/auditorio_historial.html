@@ -1,0 +1,169 @@
+{% extends 'base.html' %}
+
+{% block title %}Historial — Auditorio FIT{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center justify-content-between mb-4 flex-wrap gap-2">
+  <div class="d-flex align-items-center gap-2">
+    <a href="{{ url_for('admin.auditorio') }}" class="btn btn-outline-secondary btn-sm">
+      <i class="bi bi-arrow-left"></i>
+    </a>
+    <div>
+      <h2 class="fw-bold mb-0"><i class="bi bi-clock-history me-2 text-primary"></i>Historial de Reservas</h2>
+      <small class="text-muted">Auditorio Interactivo FIT — {{ reservas|length }} registro(s)</small>
+    </div>
+  </div>
+  <a href="{{ url_for('admin.auditorio_nueva') }}" class="btn btn-primary btn-sm">
+    <i class="bi bi-plus-lg me-1"></i>Nueva Reserva
+  </a>
+</div>
+
+<!-- Filtros -->
+<form method="GET" class="card shadow-sm mb-4">
+  <div class="card-body">
+    <div class="row g-2 align-items-end">
+      <div class="col-md-4">
+        <label class="form-label small fw-semibold mb-1">Buscar</label>
+        <input type="text" class="form-control form-control-sm" name="q"
+               value="{{ q }}" placeholder="Nombre, evento, departamento…">
+      </div>
+      <div class="col-md-3">
+        <label class="form-label small fw-semibold mb-1">Estado</label>
+        <select class="form-select form-select-sm" name="estado">
+          <option value="">Todos</option>
+          {% for e in ESTADOS %}
+          <option value="{{ e }}" {% if estado_f == e %}selected{% endif %}>{{ e|capitalize }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-md-3">
+        <label class="form-label small fw-semibold mb-1">Tipo</label>
+        <select class="form-select form-select-sm" name="tipo">
+          <option value="">Todos</option>
+          {% for t in TIPOS %}
+          <option value="{{ t }}" {% if tipo_f == t %}selected{% endif %}>{{ t|capitalize }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-md-2 d-flex gap-1">
+        <button type="submit" class="btn btn-primary btn-sm w-100">
+          <i class="bi bi-search me-1"></i>Filtrar
+        </button>
+        <a href="{{ url_for('admin.auditorio_historial') }}" class="btn btn-outline-secondary btn-sm" title="Limpiar">
+          <i class="bi bi-x-lg"></i>
+        </a>
+      </div>
+    </div>
+  </div>
+</form>
+
+{% if reservas %}
+<div class="card shadow-sm">
+  <div class="table-responsive">
+    <table class="table table-hover align-middle mb-0">
+      <thead class="table-light">
+        <tr>
+          <th>#</th>
+          <th>Evento</th>
+          <th>Solicitante</th>
+          <th>Tipo</th>
+          <th>Fecha Inicio</th>
+          <th>Duración</th>
+          <th>Estado</th>
+          <th>Pago</th>
+          <th class="text-end">Acciones</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in reservas %}
+        <tr>
+          <td class="text-muted small">{{ r.id }}</td>
+          <td>
+            <div class="fw-semibold">{{ r.nombre_evento }}</div>
+            <small class="text-muted">{{ r.departamento }}</small>
+          </td>
+          <td>
+            <div>{{ r.nombre }}</div>
+            {% if r.matricula %}
+              <small class="text-muted">{{ r.matricula }}</small>
+            {% endif %}
+            {% if r.correo %}
+              <small class="text-muted d-block"><i class="bi bi-envelope me-1"></i>{{ r.correo }}</small>
+            {% endif %}
+            {% if r.telefono %}
+              <small class="text-muted d-block"><i class="bi bi-telephone me-1"></i>{{ r.telefono }}</small>
+            {% endif %}
+          </td>
+          <td>
+            {% if r.tipo_usuario == 'docente' %}
+              <span class="badge rounded-pill" style="background:#e7f1ff;color:#0d6efd;">Docente</span>
+            {% else %}
+              <span class="badge rounded-pill" style="background:#fff3cd;color:#856404;">Externo</span>
+            {% endif %}
+          </td>
+          <td>
+            <div>{{ r.fecha_inicio.strftime('%d/%m/%Y') }}</div>
+            <small class="text-muted">{{ r.fecha_inicio.strftime('%H:%M') }} – {{ r.fecha_fin.strftime('%H:%M') }}</small>
+          </td>
+          <td class="text-center">{{ r.duracion_horas }}h</td>
+          <td>
+            {% if r.estado == 'reservado' %}
+              <span class="badge bg-primary">Reservado</span>
+            {% elif r.estado == 'en_uso' %}
+              <span class="badge bg-success">En uso</span>
+            {% elif r.estado == 'completado' %}
+              <span class="badge bg-secondary">Completado</span>
+            {% else %}
+              <span class="badge bg-danger">Cancelado</span>
+            {% endif %}
+          </td>
+          <td class="text-center">
+            {% if r.tipo_usuario == 'externo' %}
+              {% if r.pago_verificado %}
+                <i class="bi bi-check-circle-fill text-success" title="Pago verificado"></i>
+              {% else %}
+                <i class="bi bi-exclamation-circle-fill text-warning" title="Pago pendiente"></i>
+              {% endif %}
+            {% else %}
+              <span class="text-muted small">—</span>
+            {% endif %}
+          </td>
+          <td class="text-end">
+            <div class="d-flex gap-1 justify-content-end">
+              {% if r.estado not in ['completado','cancelado'] %}
+                {% if r.tipo_usuario == 'externo' %}
+                <form method="POST" action="{{ url_for('admin.auditorio_verificar_pago', reserva_id=r.id) }}">
+                  <button type="submit" class="btn btn-sm {% if r.pago_verificado %}btn-outline-secondary{% else %}btn-outline-success{% endif %}"
+                          title="{{ 'Desmarcar pago' if r.pago_verificado else 'Verificar pago' }}">
+                    <i class="bi bi-{% if r.pago_verificado %}x-circle{% else %}check-circle{% endif %}"></i>
+                  </button>
+                </form>
+                {% endif %}
+              {% endif %}
+              <a href="{{ url_for('admin.auditorio_editar', reserva_id=r.id) }}"
+                 class="btn btn-sm btn-outline-primary" title="Editar">
+                <i class="bi bi-pencil"></i>
+              </a>
+              {% if r.estado not in ['cancelado'] %}
+              <form method="POST" action="{{ url_for('admin.auditorio_cancelar', reserva_id=r.id) }}"
+                    onsubmit="return confirm('¿Cancelar esta reserva?')">
+                <button type="submit" class="btn btn-sm btn-outline-danger" title="Cancelar reserva">
+                  <i class="bi bi-x-lg"></i>
+                </button>
+              </form>
+              {% endif %}
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% else %}
+<div class="text-center text-muted py-5">
+  <i class="bi bi-calendar-x fs-1 d-block mb-2"></i>
+  No se encontraron reservas con los filtros aplicados.
+</div>
+{% endif %}
+{% endblock %}
