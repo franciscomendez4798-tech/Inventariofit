@@ -48,9 +48,5 @@ RUN mkdir -p /app/instance
 
 EXPOSE ${PORT}
 
-# Healthcheck: verifica que Flask responda
-HEALTHCHECK --interval=30s --timeout=10s --start-period=15s --retries=3 \
-  CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:${PORT}/login')" || exit 1
-
-# Entrypoint: gunicorn en producción, flask en dev
-CMD ["sh", "-c", "flask --app run init-db && gunicorn --bind 0.0.0.0:${PORT} --workers 2 --timeout 60 'run:app'"]
+# Entrypoint: init DB y arrancar gunicorn
+CMD ["sh", "-c", "flask --app run init-db; echo 'PORT='$PORT; exec gunicorn --bind 0.0.0.0:${PORT:-5000} --workers 2 --timeout 120 --log-level info run:app"]
