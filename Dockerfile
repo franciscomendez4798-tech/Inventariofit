@@ -41,6 +41,11 @@ RUN addgroup --system appgroup \
  && adduser  --system --ingroup appgroup appuser \
  && chown -R appuser:appgroup /app
 
+# Copiar y preparar entrypoint
+COPY entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh \
+ && chown appuser:appgroup /entrypoint.sh
+
 USER appuser
 
 # Crear directorio para la BD SQLite si se usa en desarrollo
@@ -48,5 +53,4 @@ RUN mkdir -p /app/instance
 
 EXPOSE ${PORT}
 
-# Entrypoint: init DB y arrancar gunicorn
-CMD ["sh", "-c", "flask --app run init-db; echo 'PORT='$PORT; exec gunicorn --bind 0.0.0.0:${PORT:-5000} --workers 2 --timeout 120 --log-level info run:app"]
+CMD ["/entrypoint.sh"]
