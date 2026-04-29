@@ -5,7 +5,8 @@ Flask-Login==0.6.3
 Flask-Migrate==4.0.7
 Werkzeug==3.0.3
 python-dotenv==1.0.1
-gunicorn==22.0.0           # Servidor WSGI para producción
+gunicorn==23.0.0           # Servidor WSGI para producción
+setuptools>=70.0           # Requerido por gunicorn en Python 3.12
 
 # ── Base de datos ─────────────────────────────────────────────────
 # SQLite incluido en Python estándar (solo desarrollo local).
