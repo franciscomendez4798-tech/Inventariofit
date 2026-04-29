@@ -11,8 +11,9 @@ flask --app run init-db
 echo "=== Arrancando Gunicorn en 0.0.0.0:${PORT:-8080} ==="
 exec gunicorn \
   --bind "0.0.0.0:${PORT:-8080}" \
-  --workers 2 \
+  --workers 1 \
   --timeout 120 \
-  --log-level info \
+  --log-level debug \
   --access-logfile - \
+  --error-logfile - \
   run:app

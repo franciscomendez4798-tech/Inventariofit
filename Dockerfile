@@ -26,7 +26,7 @@ LABEL description="Sistema de Control y Registro de Inventarios"
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     FLASK_ENV=production \
-    PORT=5000
+    PORT=8080
 
 WORKDIR /app
 
