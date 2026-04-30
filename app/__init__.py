@@ -28,4 +28,17 @@ def create_app(config_name='default'):
     app.register_blueprint(api_bp,     url_prefix='/api')
     app.register_blueprint(mantenimiento_bp, url_prefix='/mantenimiento')
 
+    # ── Filtro Jinja2: imagen_url puede ser URL absoluta (Supabase) o ruta local
+    from flask import url_for as _url_for
+
+    @app.template_filter('img_url')
+    def img_url_filter(imagen_url):
+        """Devuelve la URL correcta para una imagen: absoluta si es de Supabase,
+        o generada por url_for('static') si es una ruta local heredada."""
+        if not imagen_url:
+            return ''
+        if imagen_url.startswith('http://') or imagen_url.startswith('https://'):
+            return imagen_url
+        return _url_for('static', filename=imagen_url)
+
     return app

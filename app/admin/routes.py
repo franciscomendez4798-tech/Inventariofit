@@ -107,31 +107,63 @@ def material_form(mat_id=None):
         material.id_proveedor    = request.form.get('id_proveedor') or None
         material.publicado       = 'publicado' in request.form
 
-        # ── Manejo de imagen ───────────────────────────────────
+        # ── Manejo de imagen → Supabase Storage ───────────────
         archivo = request.files.get('imagen')
         if archivo and archivo.filename:
             ext = archivo.filename.rsplit('.', 1)[-1].lower()
             if ext in EXTENSIONES:
+                import requests as req
                 nombre_archivo = secure_filename(
                     f"mat_{datetime.utcnow().strftime('%Y%m%d%H%M%S')}_{archivo.filename}"
                 )
-                ruta_upload = os.path.join(
-                    os.path.dirname(os.path.dirname(__file__)),
-                    'static', 'uploads', 'materiales', nombre_archivo
+                supabase_url = os.environ.get(
+                    'SUPABASE_URL',
+                    'https://ymsghappylhjhayiklpe.supabase.co'
                 )
-                archivo.save(ruta_upload)
-                material.imagen_url = f'uploads/materiales/{nombre_archivo}'
+                supabase_key = os.environ.get('SUPABASE_ANON_KEY', '')
+                content_type = f'image/{ext}' if ext != 'jpg' else 'image/jpeg'
+                upload_url = (
+                    f"{supabase_url}/storage/v1/object/materiales/{nombre_archivo}"
+                )
+                resp = req.put(
+                    upload_url,
+                    data=archivo.read(),
+                    headers={
+                        'Authorization': f'Bearer {supabase_key}',
+                        'Content-Type': content_type,
+                        'x-upsert': 'true',
+                    },
+                    timeout=15,
+                )
+                if resp.status_code in (200, 201):
+                    material.imagen_url = (
+                        f"{supabase_url}/storage/v1/object/public"
+                        f"/materiales/{nombre_archivo}"
+                    )
+                else:
+                    flash(
+                        f'No se pudo subir la imagen (Storage {resp.status_code}).',
+                        'warning'
+                    )
             else:
-                flash('Formato de imagen no válido. Usa PNG, JPG, GIF o WebP.', 'warning')
+                flash('Formato no válido. Usa PNG, JPG, GIF o WebP.', 'warning')
 
         # Eliminar imagen si se marcó el checkbox
         if request.form.get('eliminar_imagen') and material.imagen_url:
-            ruta_img = os.path.join(
-                os.path.dirname(os.path.dirname(__file__)),
-                'static', material.imagen_url
-            )
-            if os.path.exists(ruta_img):
-                os.remove(ruta_img)
+            # Borrar del Storage si es una URL de Supabase
+            if 'supabase.co' in (material.imagen_url or ''):
+                import requests as req
+                supabase_url = os.environ.get(
+                    'SUPABASE_URL',
+                    'https://ymsghappylhjhayiklpe.supabase.co'
+                )
+                supabase_key = os.environ.get('SUPABASE_ANON_KEY', '')
+                nombre = material.imagen_url.split('/materiales/')[-1]
+                req.delete(
+                    f"{supabase_url}/storage/v1/object/materiales/{nombre}",
+                    headers={'Authorization': f'Bearer {supabase_key}'},
+                    timeout=10,
+                )
             material.imagen_url = None
 
         if not mat_id:

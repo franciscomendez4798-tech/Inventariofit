@@ -48,7 +48,7 @@
       <!-- Imagen del producto -->
       <div class="material-card-img">
         {% if mat.imagen_url %}
-        <img src="{{ url_for('static', filename=mat.imagen_url) }}"
+        <img src="{{ mat.imagen_url | img_url }}"
              alt="{{ mat.nombre }}">
         {% else %}
         <div class="material-card-img-placeholder">

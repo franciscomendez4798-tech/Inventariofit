@@ -23,3 +23,4 @@ docxtpl
 pypdf
 pdfplumber
 docx2pdf
+requests>=2.31.0

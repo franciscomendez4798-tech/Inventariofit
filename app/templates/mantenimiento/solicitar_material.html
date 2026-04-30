@@ -69,7 +69,7 @@
           <div class="rounded d-flex align-items-center justify-content-center"
                style="height:80px;background:var(--color-bg-2)">
             {% if mat.imagen_url %}
-              <img src="{{ url_for('static', filename=mat.imagen_url) }}"
+              <img src="{{ mat.imagen_url | img_url }}"
                    alt="{{ mat.nombre }}" class="img-fluid" style="max-height:76px;object-fit:contain">
             {% else %}
               <i class="bi bi-box-seam fs-2 text-muted"></i>
