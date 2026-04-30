@@ -64,11 +64,11 @@
       <i class="bi bi-file-earmark-text"></i> Requisiciones
     </a>
 
-    <!-- NAV PAÑOL DE MANTENIMIENTO (visible solo para admin) -->
-    <div class="nav-section-label mt-4">PAÑOL DE MANTENIMIENTO</div>
+    <!-- NAV BODEGA DE MANTENIMIENTO (visible solo para admin) -->
+    <div class="nav-section-label mt-4">BODEGA DE MANTENIMIENTO</div>
     <a href="{{ url_for('mantenimiento.panel') }}"
        class="nav-link {% if request.endpoint == 'mantenimiento.panel' %}active{% endif %}">
-      <i class="bi bi-tools"></i> Panel pañol
+      <i class="bi bi-tools"></i> Panel Bodega
     </a>
     <a href="{{ url_for('mantenimiento.stock') }}"
        class="nav-link {% if request.endpoint == 'mantenimiento.stock' %}active{% endif %}">
@@ -104,11 +104,11 @@
     </a>
 
     {% elif current_user.es_mantenimiento %}
-    <!-- NAV MANTENIMIENTO (pañol + solicitar material) -->
-    <div class="nav-section-label">PAÑOL DE MANTENIMIENTO</div>
+    <!-- NAV MANTENIMIENTO (bodega + solicitar material) -->
+    <div class="nav-section-label">BODEGA DE MANTENIMIENTO</div>
     <a href="{{ url_for('mantenimiento.panel') }}"
        class="nav-link {% if request.endpoint == 'mantenimiento.panel' %}active{% endif %}">
-      <i class="bi bi-tools"></i> Panel pañol
+      <i class="bi bi-tools"></i> Panel Bodega
     </a>
     <a href="{{ url_for('mantenimiento.stock') }}"
        class="nav-link {% if request.endpoint == 'mantenimiento.stock' %}active{% endif %}">

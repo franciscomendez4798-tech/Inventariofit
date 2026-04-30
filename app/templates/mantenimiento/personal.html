@@ -1,7 +1,7 @@
 {% extends 'base.html' %}
 {% block title %}Personal de Mantenimiento{% endblock %}
 {% block breadcrumb %}
-  <span class="text-muted">Pañol</span> <span class="mx-2 text-muted">&rsaquo;</span> <strong>Personal</strong>
+  <span class="text-muted">Bodega</span> <span class="mx-2 text-muted">&rsaquo;</span> <strong>Personal</strong>
 {% endblock %}
 
 {% block topbar_actions %}
@@ -59,18 +59,8 @@
                 <div class="d-flex justify-content-end gap-2 flex-wrap">
                   <a href="{{ url_for('mantenimiento.estadisticas_trabajador', trab_id=t.id) }}"
                      class="btn btn-sm btn-outline-primary d-flex align-items-center gap-1"
-                     title="Ver estadísticas del trabajador">
+                     title="Ver estadísticas y descargar formatos">
                     <i class="bi bi-bar-chart-line"></i> Estadísticas
-                  </a>
-                  <a href="{{ url_for('mantenimiento.formato_pedido_trabajador', trab_id=t.id) }}"
-                     class="btn btn-sm btn-outline-success d-flex align-items-center gap-1"
-                     title="Descargar Formato Requisición Excel (R-AP-33-01-01)">
-                    <i class="bi bi-file-earmark-excel"></i> Requisición
-                  </a>
-                  <a href="{{ url_for('mantenimiento.formato_salida_trabajador', trab_id=t.id) }}"
-                     class="btn btn-sm btn-outline-secondary d-flex align-items-center gap-1"
-                     title="Descargar Formato Salida Excel (R-AP-33-01-02)">
-                    <i class="bi bi-file-earmark-excel"></i> Salida
                   </a>
                   <a href="{{ url_for('mantenimiento.firma_trabajador', trab_id=t.id) }}"
                      class="btn btn-sm {% if t.firma_trabajador %}btn-success{% else %}btn-outline-dark{% endif %}"

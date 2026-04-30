@@ -396,6 +396,23 @@ def formato_salida_trabajador(trab_id):
     )
 
 
+@mantenimiento_bp.route('/personal/<int:trab_id>/informe-general')
+@solo_admin_o_mantenimiento
+def informe_general_trabajador(trab_id):
+    """Descarga un libro Excel con dos hojas: Entrada y Salida (R-AP-33-01-01 y 02)."""
+    from flask import send_file
+    from ..utils.formatos import generar_xlsx_informe_general
+    trabajador = Trabajador.query.get_or_404(trab_id)
+    buffer = generar_xlsx_informe_general(trabajador.nombre, area=trabajador.area)
+    nombre_safe = trabajador.nombre.replace(' ', '_')
+    return send_file(
+        buffer,
+        as_attachment=True,
+        download_name=f'Informe_General_{nombre_safe}.xlsx',
+        mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    )
+
+
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # PRÉSTAMOS
@@ -484,7 +501,7 @@ def devolver_prestamo(prestamo_id):
             prestamo.herramienta.estado_fisico = estado_fisico
 
         db.session.commit()
-        flash('Herramienta devuelta al pañol.', 'success')
+        flash('Herramienta devuelta a la bodega.', 'success')
     return redirect(url_for('mantenimiento.prestamos'))
 
 

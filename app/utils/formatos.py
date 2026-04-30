@@ -531,3 +531,65 @@ def generar_xlsx_salida_trabajador(trabajador_nombre: str, items=None,
     wb.close()
     buffer.seek(0)
     return buffer
+
+
+def generar_xlsx_informe_general(trabajador_nombre: str, area: str = None) -> BytesIO:
+    """
+    Genera un libro Excel con DOS hojas:
+      - "Entrada"  → Formato R-AP-33-01-01 (Requisición de Material)
+      - "Salida"   → Formato R-AP-33-01-02 (Salida de Almacén)
+    Ambas hojas pre-llenadas con el nombre y área del trabajador.
+    Retorna un BytesIO con el .xlsx.
+    """
+    departamento = area if area else 'Mantenimiento'
+    fecha = datetime.utcnow()
+
+    # ── Hoja Entrada (R-AP-33-01-01) ─────────────────────────────────────────
+    wb_entrada = openpyxl.load_workbook(PLANTILLA_PEDIDO)
+    ws_entrada = wb_entrada.active
+    ws_entrada.title = 'Entrada'
+    _llenar_bloque_pedido(ws_entrada, 1,  [], departamento, fecha, trabajador_nombre, 1)
+    _llenar_bloque_pedido(ws_entrada, 20, [], departamento, fecha, trabajador_nombre, 1)
+
+    # ── Hoja Salida (R-AP-33-01-02) ──────────────────────────────────────────
+    wb_salida = openpyxl.load_workbook(PLANTILLA_SALIDA)
+    ws_salida = wb_salida.active
+    ws_salida.title = 'Salida'
+    _llenar_bloque_salida(ws_salida, 1,  [], departamento, fecha,
+                          'Secretaría Administrativa', trabajador_nombre, 1)
+    _llenar_bloque_salida(ws_salida, 20, [], departamento, fecha,
+                          'Secretaría Administrativa', trabajador_nombre, 1)
+
+    # ── Combinar en un solo libro con 2 hojas ────────────────────────────────
+    wb_final = openpyxl.Workbook()
+    wb_final.remove(wb_final.active)   # elimina la hoja vacía por defecto
+
+    def _copiar_hoja(wb_origen, ws_origen, wb_destino, titulo):
+        ws_dest = wb_destino.create_sheet(title=titulo)
+        # Copiar dimensiones de columnas
+        for col_letter, col_dim in ws_origen.column_dimensions.items():
+            ws_dest.column_dimensions[col_letter].width = col_dim.width
+        # Copiar filas con estilos
+        for row in ws_origen.iter_rows():
+            for cell in row:
+                dest_cell = ws_dest.cell(row=cell.row, column=cell.column,
+                                         value=cell.value)
+                _copiar_estilo(cell, dest_cell)
+        # Copiar merges
+        for merged_range in ws_origen.merged_cells.ranges:
+            ws_dest.merge_cells(str(merged_range))
+        # Copiar alturas de filas
+        for row_idx, row_dim in ws_origen.row_dimensions.items():
+            ws_dest.row_dimensions[row_idx].height = row_dim.height
+
+    _copiar_hoja(wb_entrada, ws_entrada, wb_final, 'Entrada')
+    _copiar_hoja(wb_salida,  ws_salida,  wb_final, 'Salida')
+
+    wb_entrada.close()
+    wb_salida.close()
+
+    buffer = BytesIO()
+    wb_final.save(buffer)
+    wb_final.close()
+    buffer.seek(0)
+    return buffer

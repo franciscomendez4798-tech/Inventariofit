@@ -32,7 +32,7 @@ def init_db():
     # ── Mantenimiento por defecto ──────────────────────────────────────────
     if not Usuario.query.filter_by(rol='mantenimiento').first():
         mante = Usuario(
-            nombre_completo='Jefe de Pañol',
+            nombre_completo='Encargado de Bodega',
             email='mantenimiento@universidad.edu.mx',
             rol='mantenimiento',
         )
