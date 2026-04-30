@@ -23,3 +23,8 @@ app/static/uploads/
 # IDEs
 .vscode/
 .idea/
+
+# Migration files (one-time use)
+migration_supabase.sql
+sqlite_data.json
+run_migration.py
