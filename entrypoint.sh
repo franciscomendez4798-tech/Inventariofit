@@ -7,6 +7,12 @@ echo "FLASK_ENV=${FLASK_ENV}"
 
 flask --app run init-db
 
+if [ "${SEED_TRABAJADORES:-0}" = "1" ]; then
+  echo "=== Insertando plantilla de personal (SEED_TRABAJADORES=1) ==="
+  flask --app run seed-trabajadores
+  echo "=== Seed completado ==="
+fi
+
 echo "=== Arrancando Gunicorn en 0.0.0.0:${PORT:-8080} ==="
 exec gunicorn \
   --bind "0.0.0.0:${PORT:-8080}" \
