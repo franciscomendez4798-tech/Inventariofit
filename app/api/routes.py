@@ -5,7 +5,7 @@ Consumidas por Chart.js en el frontend.
 """
 from flask import Blueprint, jsonify
 from flask_login import login_required, current_user
-from sqlalchemy import func, extract
+from sqlalchemy import func, extract, case
 from ..models import (MovimientoInventario, Pedido, DetallePedido,
                       Departamento, Material, Categoria, db)
 from ..admin.routes import solo_admin
@@ -27,26 +27,30 @@ def dashboard_data():
     hace_6m = hoy - timedelta(days=180)
 
     # ── 1. Entradas y salidas por mes (últimos 6 meses) ──────────────────────
+    # Usamos extract(year/month) para compatibilidad SQLite y PostgreSQL
     movimientos = (db.session.query(
-            func.strftime('%Y-%m', MovimientoInventario.fecha).label('mes'),
+            extract('year',  MovimientoInventario.fecha).label('anio'),
+            extract('month', MovimientoInventario.fecha).label('mes_num'),
             MovimientoInventario.tipo_movimiento,
             func.sum(MovimientoInventario.cantidad).label('total')
         )
         .filter(MovimientoInventario.fecha >= hace_6m)
-        .group_by('mes', MovimientoInventario.tipo_movimiento)
-        .order_by('mes')
+        .group_by('anio', 'mes_num', MovimientoInventario.tipo_movimiento)
+        .order_by('anio', 'mes_num')
         .all()
     )
 
-    meses_set  = sorted({r.mes for r in movimientos})
+    # Construye etiquetas "YYYY-MM" en Python (compatible con cualquier BD)
+    meses_set  = sorted({f"{int(r.anio)}-{int(r.mes_num):02d}" for r in movimientos})
     entradas   = {m: 0 for m in meses_set}
     salidas    = {m: 0 for m in meses_set}
 
     for r in movimientos:
+        mes_key = f"{int(r.anio)}-{int(r.mes_num):02d}"
         if r.tipo_movimiento == 'entrada':
-            entradas[r.mes] = r.total
+            entradas[mes_key] = r.total
         elif r.tipo_movimiento == 'salida':
-            salidas[r.mes]  = r.total
+            salidas[mes_key]  = r.total
 
     # ── 2. Departamentos que más consumen (por cantidad de ítems entregados) ─
     top_deptos = (db.session.query(
