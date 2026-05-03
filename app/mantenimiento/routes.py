@@ -369,14 +369,32 @@ def personal_form(trab_id=None):
         return redirect(url_for('mantenimiento.personal'))
     return render_template('mantenimiento/personal_form.html', trabajador=trabajador)
 
+def _items_consumos_trabajador(trab_id):
+    """Retorna lista de items agregados por material de los consumos del trabajador."""
+    movs = (MovimientoStockMant.query
+            .filter_by(id_trabajador=trab_id, tipo='salida')
+            .order_by(MovimientoStockMant.fecha)
+            .all())
+    agregado = {}
+    for m in movs:
+        nombre = m.item.nombre if m.item else 'Sin nombre'
+        unidad = m.item.unidad_medida if m.item else 'pza'
+        if nombre in agregado:
+            agregado[nombre]['cantidad'] += m.cantidad
+        else:
+            agregado[nombre] = {'cantidad': m.cantidad, 'unidad': unidad, 'descripcion': nombre}
+    return list(agregado.values())
+
+
 @mantenimiento_bp.route('/personal/<int:trab_id>/formato_pedido')
 @solo_admin_o_mantenimiento
 def formato_pedido_trabajador(trab_id):
-    """Descarga el formato R-AP-33-01-01 real (.xlsx) con el nombre del trabajador pre-llenado."""
+    """Descarga el formato R-AP-33-01-01 (.xlsx) con los consumos del trabajador."""
     from flask import send_file
     from ..utils.formatos import generar_xlsx_pedido_trabajador
     trabajador = Trabajador.query.get_or_404(trab_id)
-    buffer = generar_xlsx_pedido_trabajador(trabajador.nombre, area=trabajador.area)
+    items = _items_consumos_trabajador(trab_id)
+    buffer = generar_xlsx_pedido_trabajador(trabajador.nombre, items=items, area=trabajador.area)
     return send_file(
         buffer,
         as_attachment=True,
@@ -388,11 +406,12 @@ def formato_pedido_trabajador(trab_id):
 @mantenimiento_bp.route('/personal/<int:trab_id>/formato_salida')
 @solo_admin_o_mantenimiento
 def formato_salida_trabajador(trab_id):
-    """Descarga el formato R-AP-33-01-02 real (.xlsx) con el nombre del trabajador pre-llenado."""
+    """Descarga el formato R-AP-33-01-02 (.xlsx) con los consumos del trabajador."""
     from flask import send_file
     from ..utils.formatos import generar_xlsx_salida_trabajador
     trabajador = Trabajador.query.get_or_404(trab_id)
-    buffer = generar_xlsx_salida_trabajador(trabajador.nombre, area=trabajador.area)
+    items = _items_consumos_trabajador(trab_id)
+    buffer = generar_xlsx_salida_trabajador(trabajador.nombre, items=items, area=trabajador.area)
     return send_file(
         buffer,
         as_attachment=True,
@@ -404,11 +423,12 @@ def formato_salida_trabajador(trab_id):
 @mantenimiento_bp.route('/personal/<int:trab_id>/informe-general')
 @solo_admin_o_mantenimiento
 def informe_general_trabajador(trab_id):
-    """Descarga un libro Excel con dos hojas: Entrada y Salida (R-AP-33-01-01 y 02)."""
+    """Descarga un libro Excel con dos hojas (Entrada + Salida) con los consumos del trabajador."""
     from flask import send_file
     from ..utils.formatos import generar_xlsx_informe_general
     trabajador = Trabajador.query.get_or_404(trab_id)
-    buffer = generar_xlsx_informe_general(trabajador.nombre, area=trabajador.area)
+    items = _items_consumos_trabajador(trab_id)
+    buffer = generar_xlsx_informe_general(trabajador.nombre, area=trabajador.area, items=items)
     nombre_safe = trabajador.nombre.replace(' ', '_')
     return send_file(
         buffer,

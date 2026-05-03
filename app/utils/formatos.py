@@ -533,14 +533,18 @@ def generar_xlsx_salida_trabajador(trabajador_nombre: str, items=None,
     return buffer
 
 
-def generar_xlsx_informe_general(trabajador_nombre: str, area: str = None) -> BytesIO:
+def generar_xlsx_informe_general(trabajador_nombre: str, area: str = None,
+                                  items=None) -> BytesIO:
     """
     Genera un libro Excel con DOS hojas:
       - "Entrada"  → Formato R-AP-33-01-01 (Requisición de Material)
       - "Salida"   → Formato R-AP-33-01-02 (Salida de Almacén)
-    Ambas hojas pre-llenadas con el nombre y área del trabajador.
+    Ambas hojas pre-llenadas con el nombre, área e items del trabajador.
     Retorna un BytesIO con el .xlsx.
     """
+    if items is None:
+        items = []
+
     departamento = area if area else 'Mantenimiento'
     fecha = datetime.utcnow()
 
@@ -548,16 +552,16 @@ def generar_xlsx_informe_general(trabajador_nombre: str, area: str = None) -> By
     wb_entrada = openpyxl.load_workbook(PLANTILLA_PEDIDO)
     ws_entrada = wb_entrada.active
     ws_entrada.title = 'Entrada'
-    _llenar_bloque_pedido(ws_entrada, 1,  [], departamento, fecha, trabajador_nombre, 1)
-    _llenar_bloque_pedido(ws_entrada, 20, [], departamento, fecha, trabajador_nombre, 1)
+    _llenar_bloque_pedido(ws_entrada, 1,  items, departamento, fecha, trabajador_nombre, 1)
+    _llenar_bloque_pedido(ws_entrada, 20, items, departamento, fecha, trabajador_nombre, 1)
 
     # ── Hoja Salida (R-AP-33-01-02) ──────────────────────────────────────────
     wb_salida = openpyxl.load_workbook(PLANTILLA_SALIDA)
     ws_salida = wb_salida.active
     ws_salida.title = 'Salida'
-    _llenar_bloque_salida(ws_salida, 1,  [], departamento, fecha,
+    _llenar_bloque_salida(ws_salida, 1,  items, departamento, fecha,
                           'Secretaría Administrativa', trabajador_nombre, 1)
-    _llenar_bloque_salida(ws_salida, 20, [], departamento, fecha,
+    _llenar_bloque_salida(ws_salida, 20, items, departamento, fecha,
                           'Secretaría Administrativa', trabajador_nombre, 1)
 
     # ── Combinar en un solo libro con 2 hojas ────────────────────────────────
