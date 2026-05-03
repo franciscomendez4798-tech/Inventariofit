@@ -276,10 +276,15 @@ def consumos():
 
     consumos      = query.all()
     trabajadores  = Trabajador.query.filter_by(activo=True).order_by(Trabajador.nombre).all()
+    materiales    = StockMantenimiento.query.filter(
+        StockMantenimiento.activo == True,
+        StockMantenimiento.cantidad > 0
+    ).order_by(StockMantenimiento.nombre).all()
     total_salidas = MovimientoStockMant.query.filter_by(tipo='salida').count()
     return render_template('mantenimiento/consumos.html',
                            consumos=consumos,
                            trabajadores=trabajadores,
+                           materiales=materiales,
                            total_salidas=total_salidas,
                            q=q, fecha=fecha, id_trabajador=id_trabajador)
 

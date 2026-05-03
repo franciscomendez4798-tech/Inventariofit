@@ -6,9 +6,10 @@
   <strong>Consumos</strong>
 {% endblock %}
 {% block topbar_actions %}
-<a href="{{ url_for('mantenimiento.stock') }}" class="btn btn-warning text-dark d-flex align-items-center gap-2">
-  <i class="bi bi-dash-lg"></i> Registrar Salida (Stock)
-</a>
+<button class="btn btn-danger d-flex align-items-center gap-2"
+        data-bs-toggle="modal" data-bs-target="#modalRegistrarSalida">
+  <i class="bi bi-dash-circle"></i> Registrar Salida
+</button>
 {% endblock %}
 
 {% block content %}
@@ -111,7 +112,7 @@
               <div class="text-muted small">{{ c.item.unidad_medida if c.item else '' }}</div>
             </td>
             <td class="text-center">
-              <span class="badge bg-warning bg-opacity-15 text-warning border border-warning border-opacity-25 rounded-pill px-3 py-2 fs-6">
+              <span class="badge bg-danger bg-opacity-10 text-danger border border-danger border-opacity-25 rounded-pill px-3 py-2 fs-6">
                 <i class="bi bi-dash-lg me-1"></i>{{ c.cantidad }}
               </span>
             </td>
@@ -145,9 +146,10 @@
               {% else %}
                 Aún no se han registrado consumos / salidas de material del stock.
                 <div class="mt-3">
-                  <a href="{{ url_for('mantenimiento.stock') }}" class="btn btn-warning btn-sm text-dark">
-                    <i class="bi bi-dash-lg me-1"></i>Ir al Stock para registrar salida
-                  </a>
+                  <button class="btn btn-danger btn-sm"
+                          data-bs-toggle="modal" data-bs-target="#modalRegistrarSalida">
+                    <i class="bi bi-dash-circle me-1"></i>Registrar primera salida
+                  </button>
                 </div>
               {% endif %}
             </td>
@@ -158,4 +160,94 @@
     </div>
   </div>
 </div>
+
+<!-- Modal Registrar Salida / Asignar a trabajador -->
+<div class="modal fade" id="modalRegistrarSalida" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content border-0 shadow-lg">
+      <div class="modal-header border-0 pb-0">
+        <h5 class="modal-title fw-bold">
+          <i class="bi bi-dash-circle text-danger me-2"></i>Registrar Salida de Material
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <form action="{{ url_for('mantenimiento.consumo_form') }}" method="POST">
+        <div class="modal-body">
+          {% if not materiales %}
+          <div class="alert alert-warning d-flex align-items-center gap-2 py-2">
+            <i class="bi bi-exclamation-triangle-fill"></i>
+            No hay materiales con stock disponible.
+            <a href="{{ url_for('mantenimiento.stock') }}" class="alert-link ms-1">Ver stock →</a>
+          </div>
+          {% else %}
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Material <span class="text-danger">*</span></label>
+            <select name="id_material" id="modalSelectMaterial" class="form-select" required>
+              <option value="">— Selecciona un material —</option>
+              {% for m in materiales %}
+              <option value="{{ m.id }}" data-stock="{{ m.cantidad }}" data-unidad="{{ m.unidad_medida }}">
+                {{ m.nombre }} ({{ m.cantidad }} {{ m.unidad_medida }} disponibles)
+              </option>
+              {% endfor %}
+            </select>
+          </div>
+          <div id="modalInfoStock" class="alert alert-info d-none py-2 mb-3">
+            <i class="bi bi-info-circle me-1"></i>
+            Disponible: <strong id="modalStockActual">—</strong> <span id="modalUnidad"></span>
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Técnico responsable</label>
+            <select name="id_trabajador" class="form-select">
+              <option value="">— Sin asignar —</option>
+              {% for t in trabajadores %}
+              <option value="{{ t.id }}">{{ t.nombre }} — {{ t.cargo }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Cantidad <span class="text-danger">*</span></label>
+            <input type="number" name="cantidad" id="modalCantidad" class="form-control" min="1" required placeholder="ej. 5">
+          </div>
+          <div class="mb-2">
+            <label class="form-label fw-semibold">Descripción de la actividad</label>
+            <input type="text" name="motivo" class="form-control"
+                   placeholder="Mantenimiento preventivo, reparación bomba…">
+          </div>
+          {% endif %}
+        </div>
+        <div class="modal-footer border-0">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+          {% if materiales %}
+          <button type="submit" class="btn btn-danger">
+            <i class="bi bi-dash-circle me-1"></i>Registrar salida
+          </button>
+          {% endif %}
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const modalSelect = document.getElementById('modalSelectMaterial');
+const modalCantidad = document.getElementById('modalCantidad');
+const modalInfo = document.getElementById('modalInfoStock');
+if (modalSelect) {
+  modalSelect.addEventListener('change', function () {
+    const opt = this.options[this.selectedIndex];
+    if (this.value) {
+      const stock = parseInt(opt.dataset.stock);
+      document.getElementById('modalStockActual').textContent = stock;
+      document.getElementById('modalUnidad').textContent = opt.dataset.unidad;
+      modalCantidad.max = stock;
+      modalInfo.classList.remove('d-none');
+    } else {
+      modalInfo.classList.add('d-none');
+      modalCantidad.removeAttribute('max');
+    }
+  });
+}
+</script>
 {% endblock %}
