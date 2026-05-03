@@ -77,6 +77,19 @@
               <span class="badge bg-{{ badge_color.get(o.estado,'secondary') }}">
                 {{ badge_label.get(o.estado, o.estado) }}
               </span>
+              {% if o.estado == 'entregada' %}
+                {% if o.firma_tipo == 'hmac_sha256' %}
+                <span class="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25 rounded-pill ms-1"
+                      title="Firma digital HMAC-SHA256 verificada">
+                  <i class="bi bi-shield-check me-1"></i>Digital
+                </span>
+                {% else %}
+                <span class="badge bg-secondary bg-opacity-10 text-secondary border border-secondary border-opacity-25 rounded-pill ms-1"
+                      title="Firma de imagen PNG (formato heredado)">
+                  <i class="bi bi-image me-1"></i>PNG
+                </span>
+                {% endif %}
+              {% endif %}
             </td>
             <td class="text-center">
               <div class="d-flex gap-1 justify-content-center flex-wrap">

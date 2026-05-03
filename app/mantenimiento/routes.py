@@ -1043,6 +1043,9 @@ def firmar_orden(orden_id):
             elif not mi_firma:
                 flash('Debes registrar tu firma primero (sección "Mi Firma").', 'warning')
             else:
+                from flask import current_app
+                from ..utils.firma_digital import firmar_orden as generar_hmac
+
                 trab = Trabajador.query.get(id_trab_firma)
                 orden.firma_realizo_b64      = firma_trab_obj.firma_b64
                 orden.nombre_realizo         = trab.nombre if trab else ''
@@ -1052,6 +1055,13 @@ def firmar_orden(orden_id):
                 orden.nombre_solicitante_firma = orden.solicitante.nombre_completo
                 orden.estado         = 'entregada'
                 orden.fecha_entrega  = datetime.utcnow()
+
+                # Firma digital HMAC-SHA256
+                secret = current_app.config.get('SECRET_KEY', '')
+                canonical, hmac_hex = generar_hmac(orden, secret)
+                orden.firma_tipo      = 'hmac_sha256'
+                orden.firma_hmac      = hmac_hex
+                orden.firma_canonical = canonical
 
                 # Generar PDF
                 try:

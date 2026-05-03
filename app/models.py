@@ -503,6 +503,11 @@ class OrdenServicio(db.Model):
     firma_solicitante_b64  = db.Column(db.Text)   # Solicitante conformidad
     nombre_solicitante_firma = db.Column(db.String(150))
 
+    # Firma digital HMAC-SHA256 (nuevas órdenes)
+    firma_tipo       = db.Column(db.String(20))   # 'png_legacy' | 'hmac_sha256'
+    firma_hmac       = db.Column(db.Text)          # hex digest del HMAC
+    firma_canonical  = db.Column(db.Text)          # cadena canónica firmada (auditoría)
+
     # Archivo generado
     archivo_docx_path  = db.Column(db.String(500))
     fecha_entrega      = db.Column(db.DateTime)
