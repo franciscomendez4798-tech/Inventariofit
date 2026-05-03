@@ -16,6 +16,9 @@ instance/
 app/static/uploads/
 *.xlsx
 *.pdf
+# Excepciones: plantillas institucionales (deben ir al repo)
+!app/utils/plantilla_pedido.xlsx
+!app/utils/plantilla_salida.xlsx
 
 # macOS
 .DS_Store
