@@ -76,12 +76,16 @@ def stock():
 
     items = query.all()
     trabajadores = Trabajador.query.filter_by(activo=True).order_by(Trabajador.nombre).all()
-    pedidos_aprobados = PedidoEquipo.query.filter_by(estado='aprobado').all()
+    # Incluir aprobados y entregados para que siempre se pueda trazar el origen
+    pedidos_origen = (PedidoEquipo.query
+                      .filter(PedidoEquipo.estado.in_(['aprobado', 'entregado']))
+                      .order_by(PedidoEquipo.fecha_pedido.desc())
+                      .all())
 
     return render_template('mantenimiento/stock.html',
                            items=items,
                            trabajadores=trabajadores,
-                           pedidos_aprobados=pedidos_aprobados,
+                           pedidos_aprobados=pedidos_origen,
                            q=q,
                            solo_bajo=solo_bajo)
 

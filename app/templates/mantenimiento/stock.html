@@ -183,14 +183,23 @@
           </div>
           {% endif %}
           <div class="mb-3">
-            <label class="form-label fw-semibold">Pedido de origen (folio aprobado)</label>
-            <select name="id_pedido_equipo" class="form-select">
+            <label class="form-label fw-semibold">Pedido de origen</label>
+            <select name="id_pedido_equipo" class="form-select pedido-origen-select"
+                    data-detail="detalle-origen-libre">
               <option value="">— Ninguno / carga directa —</option>
               {% for pe in pedidos_aprobados %}
-              <option value="{{ pe.id }}">{{ pe.folio }} — {{ pe.trabajador.nombre }}</option>
+              <option value="{{ pe.id }}"
+                      data-fecha="{{ pe.fecha_pedido.strftime('%d/%m/%Y') if pe.fecha_pedido else '' }}"
+                      data-trabajador="{{ pe.trabajador.nombre if pe.trabajador else '' }}"
+                      data-estado="{{ pe.estado }}"
+                      data-items="{{ pe.get_items()|tojson|e }}">
+                {{ pe.folio }} — {{ pe.fecha_pedido.strftime('%d %b %Y') if pe.fecha_pedido else '' }} — {{ pe.trabajador.nombre if pe.trabajador else '' }}
+                {% if pe.estado == 'entregado' %}(entregado){% endif %}
+              </option>
               {% endfor %}
             </select>
-            <div class="form-text text-muted">Vincular permite trazar el origen del artículo y marcará el pedido como entregado.</div>
+            <div id="detalle-origen-libre" class="pedido-origen-detalle mt-2" style="display:none"></div>
+            <div class="form-text text-muted">Selecciona el pedido que originó este material. Se mostrará su contenido para verificar.</div>
           </div>
         </div>
         <div class="modal-footer border-0">
@@ -229,12 +238,23 @@
           </div>
           <div class="mb-3">
             <label class="form-label fw-semibold">Pedido de origen</label>
-            <select name="id_pedido_equipo" class="form-select">
+            <select name="id_pedido_equipo" class="form-select pedido-origen-select"
+                    data-detail="detalle-origen-{{ item.id }}"
+                    {% if item.pedido_origen %}data-preselect="{{ item.pedido_origen.id }}"{% endif %}>
               <option value="">— Ninguno —</option>
               {% for pe in pedidos_aprobados %}
-              <option value="{{ pe.id }}">{{ pe.folio }} — {{ pe.trabajador.nombre }}</option>
+              <option value="{{ pe.id }}"
+                      data-fecha="{{ pe.fecha_pedido.strftime('%d/%m/%Y') if pe.fecha_pedido else '' }}"
+                      data-trabajador="{{ pe.trabajador.nombre if pe.trabajador else '' }}"
+                      data-estado="{{ pe.estado }}"
+                      data-items="{{ pe.get_items()|tojson|e }}"
+                      {% if item.pedido_origen and item.pedido_origen.id == pe.id %}selected{% endif %}>
+                {{ pe.folio }} — {{ pe.fecha_pedido.strftime('%d %b %Y') if pe.fecha_pedido else '' }} — {{ pe.trabajador.nombre if pe.trabajador else '' }}
+                {% if pe.estado == 'entregado' %}(entregado){% endif %}
+              </option>
               {% endfor %}
             </select>
+            <div id="detalle-origen-{{ item.id }}" class="pedido-origen-detalle mt-2" style="display:none"></div>
           </div>
           <div class="mb-2">
             <label class="form-label fw-semibold">Motivo</label>
@@ -294,4 +314,68 @@
 </div>
 
 {% endfor %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+function mostrarDetallePedido(select) {
+  var opt    = select.options[select.selectedIndex];
+  var target = document.getElementById(select.dataset.detail);
+  if (!target) return;
+
+  if (!opt.value) {
+    target.style.display = 'none';
+    target.innerHTML = '';
+    return;
+  }
+
+  var fecha      = opt.dataset.fecha      || '—';
+  var trabajador = opt.dataset.trabajador || '—';
+  var estado     = opt.dataset.estado     || '';
+  var itemsRaw   = opt.dataset.items      || '[]';
+  var items = [];
+  try { items = JSON.parse(itemsRaw); } catch(e) {}
+
+  var badgeClass = estado === 'entregado' ? 'bg-info' : 'bg-success';
+  var badgeText  = estado === 'entregado' ? 'Entregado' : 'Aprobado';
+
+  var html = '<div class="border rounded p-2" style="background:#f8fafc;font-size:.85rem">'
+    + '<div class="d-flex align-items-center gap-2 mb-2">'
+    + '<i class="bi bi-calendar3 text-muted"></i>'
+    + '<span class="fw-semibold">Pedido del ' + fecha + '</span>'
+    + '<span class="text-muted">— ' + trabajador + '</span>'
+    + '<span class="badge ' + badgeClass + ' bg-opacity-75 ms-auto" style="font-size:.7rem">' + badgeText + '</span>'
+    + '</div>';
+
+  if (items.length > 0) {
+    html += '<div class="text-muted small mb-1 text-uppercase fw-semibold" style="letter-spacing:.04em">Artículos solicitados</div>'
+          + '<ul class="list-unstyled mb-0">';
+    items.forEach(function(it) {
+      html += '<li class="d-flex align-items-baseline gap-2 py-1 border-bottom">'
+            + '<span class="badge bg-secondary bg-opacity-10 text-secondary border rounded-pill px-2">'
+            + (it.cantidad || '—') + ' ' + (it.unidad || '') + '</span>'
+            + '<span>' + (it.descripcion || '') + '</span>'
+            + '</li>';
+    });
+    html += '</ul>';
+  } else {
+    html += '<span class="text-muted">Sin artículos detallados.</span>';
+  }
+
+  html += '</div>';
+  target.innerHTML = html;
+  target.style.display = 'block';
+}
+
+document.querySelectorAll('.pedido-origen-select').forEach(function(sel) {
+  sel.addEventListener('change', function() { mostrarDetallePedido(this); });
+  /* Mostrar detalle si ya hay una opción preseleccionada al abrir el modal */
+  var modal = sel.closest('.modal');
+  if (modal) {
+    modal.addEventListener('shown.bs.modal', function() {
+      if (sel.value) mostrarDetallePedido(sel);
+    });
+  }
+});
+</script>
 {% endblock %}
