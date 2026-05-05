@@ -5,6 +5,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>{% block title %}Inventario{% endblock %} — Sistema Universitario</title>
 
+  <!-- Favicon -->
+  <link rel="icon" type="image/png" href="{{ url_for('static', filename='img/favicon.png') }}">
+  <link rel="apple-touch-icon" href="{{ url_for('static', filename='img/favicon.png') }}">
+
   <!-- Google Fonts: Libre Baskerville (display) + Source Sans 3 (body) -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Libre+Baskerville:wght@400;700&family=Source+Sans+3:wght@300;400;600;700&display=swap" rel="stylesheet">
@@ -25,12 +29,9 @@
 ══════════════════════════════════════════════════════════ -->
 <div class="sidebar" id="sidebar">
   <div class="sidebar-brand">
-    <img src="{{ url_for('static', filename='img/footer.png') }}"
-         alt="Facultad de Ingeniería" class="sidebar-brand-logo">
-    <div>
-      <div class="sidebar-brand-name">Fac. Ingeniería</div>
-      <div class="sidebar-brand-sub">Inventarios</div>
-    </div>
+    <img src="{{ url_for('static', filename='img/logo_aniversario.png') }}"
+         alt="70 Aniversario Facultad de Ingeniería Tampico"
+         class="sidebar-brand-logo sidebar-brand-logo--aniversario">
   </div>
 
   <nav class="sidebar-nav">

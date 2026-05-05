@@ -5,6 +5,11 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Iniciar sesión — Sistema de Inventarios</title>
+
+  <!-- Favicon -->
+  <link rel="icon" type="image/png" href="{{ url_for('static', filename='img/favicon.png') }}">
+  <link rel="apple-touch-icon" href="{{ url_for('static', filename='img/favicon.png') }}">
+
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Libre+Baskerville:wght@400;700&family=Source+Sans+3:wght@300;400;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/css/bootstrap.min.css">
@@ -17,10 +22,10 @@
   <!-- Panel izquierdo: branding -->
   <div class="login-left">
     <div class="login-brand">
-      <img src="{{ url_for('static', filename='img/footer.png') }}"
-           alt="Facultad de Ingeniería" class="login-brand-img">
-      <div class="login-brand-title">Facultad de Ingeniería</div>
-      <p class="login-brand-desc">
+      <img src="{{ url_for('static', filename='img/logo_aniversario.png') }}"
+           alt="70 Aniversario Facultad de Ingeniería Tampico"
+           class="login-brand-img login-brand-img--aniversario">
+      <p class="login-brand-desc mt-3">
         Sistema de Control y Registro de Inventarios
       </p>
     </div>
