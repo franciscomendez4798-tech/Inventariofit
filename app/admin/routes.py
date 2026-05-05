@@ -407,10 +407,7 @@ def _obtener_historial_consumo(pedido: Pedido) -> dict:
             dp2.id_material,
             p2.folio                AS ultimo_folio,
             dp2.cantidad_aprobada   AS ultima_cantidad,
-            p2.fecha_resolucion     AS ultima_fecha,
-            CAST(
-                (julianday('now') - julianday(p2.fecha_resolucion))
-            AS INTEGER)             AS dias_transcurridos
+            p2.fecha_resolucion     AS ultima_fecha
         FROM  Detalle_Pedido dp2
         JOIN  Pedidos p2 ON p2.id = dp2.id_pedido
         WHERE p2.id_departamento = :depto_id
@@ -430,14 +427,23 @@ def _obtener_historial_consumo(pedido: Pedido) -> dict:
 
     rows = db.session.execute(sql, params).fetchall()
 
-    # Convertir a dict indexado por id_material
+    hoy = datetime.utcnow()
     historial = {}
     for row in rows:
+        fecha = row.ultima_fecha
+        if fecha is None:
+            dias = None
+        else:
+            if hasattr(fecha, 'replace'):
+                fecha_dt = fecha if hasattr(fecha, 'date') else datetime.combine(fecha, datetime.min.time())
+            else:
+                fecha_dt = datetime.utcnow()
+            dias = (hoy - fecha_dt).days if fecha_dt else None
         historial[row.id_material] = {
             'folio':     row.ultimo_folio,
             'cantidad':  row.ultima_cantidad,
             'fecha':     row.ultima_fecha,
-            'dias':      row.dias_transcurridos,
+            'dias':      dias,
         }
     return historial
 
