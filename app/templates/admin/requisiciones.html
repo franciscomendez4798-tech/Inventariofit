@@ -1,96 +1,174 @@
 {# templates/admin/requisiciones.html #}
 {% extends "base.html" %}
-{% block title %}Requisiciones — Salida de Almacén{% endblock %}
+{% block title %}Requisiciones — Almacén{% endblock %}
 
-{% block breadcrumb %}<strong>Requisiciones</strong> — Salida de Almacén{% endblock %}
+{% block breadcrumb %}<strong>Requisiciones</strong> — Almacén{% endblock %}
 
-{% block topbar_actions %}
-{% if pedidos %}
-<a href="{{ url_for('admin.descargar_salidas_pdf', departamento=filtro_depto) }}" 
-   class="btn btn-sm btn-primary">
-  <i class="bi bi-file-earmark-pdf me-1"></i>Descargar PDF
-</a>
+{% block content %}
+<div class="d-flex align-items-center justify-content-between mb-1">
+  <div>
+    <h1 class="page-title mb-0">Requisiciones de Almacén</h1>
+    <p class="page-subtitle mb-0">Formatos de entrada y salida agrupados por departamento.</p>
+  </div>
+  <span class="badge bg-secondary fs-6">{{ total }} pedido{{ 's' if total != 1 }}</span>
+</div>
+
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% for category, message in messages %}
+  <div class="alert alert-{{ category }} mt-3">{{ message }}</div>
+  {% endfor %}
+{% endwith %}
+
+{% if not grupos %}
+<div class="text-center py-5 text-muted mt-4">
+  <i class="bi bi-inbox fs-1 d-block mb-2"></i>
+  No hay requisiciones registradas.
+</div>
+{% else %}
+
+{# ── Barra de búsqueda rápida ─────────────────────────────────────── #}
+<div class="mt-3 mb-4">
+  <input type="text" id="busqueda" class="form-control" style="max-width:340px"
+         placeholder="Buscar folio o solicitante…">
+</div>
+
+{# ── Secciones por departamento ───────────────────────────────────── #}
+{% for nombre_depto, pedidos in grupos %}
+<div class="depto-seccion mb-4" id="depto-{{ loop.index }}">
+
+  {# Encabezado de sección #}
+  <div class="d-flex align-items-center gap-2 mb-2">
+    <button class="btn btn-sm btn-outline-secondary py-0 px-2 toggle-depto"
+            data-target="tabla-{{ loop.index }}" title="Colapsar/expandir">
+      <i class="bi bi-chevron-down"></i>
+    </button>
+    <h2 class="h6 fw-semibold mb-0 text-uppercase tracking-wide" style="letter-spacing:.04em">
+      <i class="bi bi-building me-1 text-muted"></i>{{ nombre_depto }}
+    </h2>
+    <span class="badge bg-light text-secondary border ms-1">{{ pedidos|length }}</span>
+  </div>
+
+  {# Tabla del departamento #}
+  <div id="tabla-{{ loop.index }}">
+    <div class="table-responsive">
+      <table class="table table-sm table-hover align-middle mb-0">
+        <thead class="table-light">
+          <tr>
+            <th style="width:140px">Folio</th>
+            <th>Solicitante</th>
+            <th class="text-center" style="width:70px">Arts.</th>
+            <th style="width:145px">Fecha solicitud</th>
+            <th style="width:100px">Estado</th>
+            <th class="text-center" style="width:190px">Descargar</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for p in pedidos %}
+          <tr class="fila-pedido">
+            <td>
+              <a href="{{ url_for('admin.revisar_pedido', pedido_id=p.id) }}"
+                 class="fw-bold font-monospace small text-decoration-none">
+                {{ p.folio }}
+              </a>
+            </td>
+            <td class="small">
+              {{ p.solicitante.nombre_completo if p.solicitante else '—' }}
+            </td>
+            <td class="text-center small">{{ p.detalles|length }}</td>
+            <td class="small text-muted">
+              {{ p.fecha_solicitud.strftime('%d/%m/%Y %H:%M') if p.fecha_solicitud else '—' }}
+            </td>
+            <td>
+              <span class="badge-estado estado-{{ p.estado }}">
+                {{ p.estado.replace('_', ' ') }}
+              </span>
+            </td>
+            <td class="text-center">
+              <div class="d-flex gap-1 justify-content-center">
+
+                {# Botón Entrada — siempre disponible si el archivo existe #}
+                {% if formatos[p.id].entrada %}
+                <a href="{{ url_for('admin.descargar_entrada_admin_xlsx', pedido_id=p.id) }}"
+                   class="btn btn-sm btn-outline-primary"
+                   title="Descargar formato de entrada (requisición)">
+                  <i class="bi bi-download me-1"></i>Entrada
+                </a>
+                {% else %}
+                <span class="btn btn-sm btn-outline-secondary disabled" style="opacity:.45"
+                      title="Formato de entrada no disponible">
+                  <i class="bi bi-hourglass me-1"></i>Entrada
+                </span>
+                {% endif %}
+
+                {# Botón Salida — solo si pedido aprobado/modificado/entregado #}
+                {% if formatos[p.id].salida %}
+                <a href="{{ url_for('admin.descargar_salida_admin_xlsx', pedido_id=p.id) }}"
+                   class="btn btn-sm btn-outline-success"
+                   title="Descargar formato de salida de almacén">
+                  <i class="bi bi-download me-1"></i>Salida
+                </a>
+                {% elif p.estado in ('aprobado', 'modificado', 'entregado') %}
+                <span class="btn btn-sm btn-outline-secondary disabled" style="opacity:.45"
+                      title="Generando formato de salida…">
+                  <i class="bi bi-hourglass me-1"></i>Salida
+                </span>
+                {% endif %}
+
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>{# /tabla #}
+</div>{# /depto-seccion #}
+{% endfor %}
+
 {% endif %}
 {% endblock %}
 
-{% block content %}
-<h1 class="page-title">Salida de Almacén</h1>
-<p class="page-subtitle">Formatos de salida generados para los pedidos aprobados y entregados.</p>
+{% block scripts %}
+<script>
+/* ── Colapsar/expandir sección ── */
+document.querySelectorAll('.toggle-depto').forEach(function(btn) {
+  btn.addEventListener('click', function() {
+    var target = document.getElementById(this.dataset.target);
+    var icon   = this.querySelector('i');
+    if (target.style.display === 'none') {
+      target.style.display = '';
+      icon.className = 'bi bi-chevron-down';
+    } else {
+      target.style.display = 'none';
+      icon.className = 'bi bi-chevron-right';
+    }
+  });
+});
 
-<!-- Filtro por departamento -->
-<div class="mb-4">
-  <form method="GET" class="d-flex gap-2 align-items-center flex-wrap">
-    <select name="departamento" class="form-select" style="max-width:280px"
-            onchange="this.form.submit()">
-      <option value="">Todos los departamentos</option>
-      {% for d in departamentos %}
-      <option value="{{ d.id }}" {{ 'selected' if filtro_depto|string == d.id|string }}>
-        {{ d.nombre }}
-      </option>
-      {% endfor %}
-    </select>
-    {% if filtro_depto %}
-    <a href="{{ url_for('admin.requisiciones') }}" class="btn btn-sm btn-outline-secondary">
-      <i class="bi bi-x-lg me-1"></i>Limpiar
-    </a>
-    {% endif %}
-    <span class="text-muted small ms-2">
-      {{ pedidos|length }} formato{{ 's' if pedidos|length != 1 }}
-    </span>
-  </form>
-</div>
-
-{% if not pedidos %}
-<div class="text-center py-5 text-muted">
-  <i class="bi bi-file-earmark-text fs-1 d-block mb-2"></i>
-  No hay formatos de salida de almacén.
-</div>
-{% else %}
-<div class="table-responsive">
-  <table class="table table-sm">
-    <thead>
-      <tr>
-        <th>Folio</th>
-        <th>Departamento</th>
-        <th>Solicitante</th>
-        <th class="text-center">Artículos</th>
-        <th>Fecha resolución</th>
-        <th>Estado</th>
-        <th>Formato</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for p in pedidos %}
-      <tr>
-        <td>
-          <a href="{{ url_for('admin.revisar_pedido', pedido_id=p.id) }}"
-             class="fw-bold font-monospace small text-decoration-none">
-            {{ p.folio }}
-          </a>
-        </td>
-        <td class="small">{{ p.departamento.nombre if p.departamento else '—' }}</td>
-        <td class="small">{{ p.solicitante.nombre_completo.split()[0] if p.solicitante else '—' }}</td>
-        <td class="text-center small">{{ p.detalles|length }}</td>
-        <td class="small text-muted">
-          {{ p.fecha_resolucion.strftime('%d/%m/%Y %H:%M') if p.fecha_resolucion else '—' }}
-        </td>
-        <td>
-          <span class="badge-estado estado-{{ p.estado }}">{{ p.estado.replace('_', ' ') }}</span>
-        </td>
-        <td>
-          {% if formatos[p.id] %}
-          <a href="{{ url_for('admin.descargar_salida_admin_xlsx', pedido_id=p.id) }}"
-             class="btn btn-sm btn-outline-success">
-            <i class="bi bi-download me-1"></i>.xlsx
-          </a>
-          {% else %}
-          <span class="text-muted small"><i class="bi bi-hourglass me-1"></i>Pendiente</span>
-          {% endif %}
-        </td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
-</div>
-{% endif %}
+/* ── Búsqueda en tiempo real ── */
+document.getElementById('busqueda').addEventListener('input', function() {
+  var q = this.value.trim().toLowerCase();
+  document.querySelectorAll('.depto-seccion').forEach(function(seccion) {
+    var filas   = seccion.querySelectorAll('.fila-pedido');
+    var visibles = 0;
+    filas.forEach(function(fila) {
+      var texto = fila.textContent.toLowerCase();
+      if (!q || texto.includes(q)) {
+        fila.style.display = '';
+        visibles++;
+      } else {
+        fila.style.display = 'none';
+      }
+    });
+    seccion.style.display = (q && visibles === 0) ? 'none' : '';
+    /* Asegura que la tabla esté visible al buscar */
+    if (q) {
+      var tabla = seccion.querySelector('[id^="tabla-"]');
+      if (tabla) tabla.style.display = '';
+      var btn = seccion.querySelector('.toggle-depto i');
+      if (btn) btn.className = 'bi bi-chevron-down';
+    }
+  });
+});
+</script>
 {% endblock %}

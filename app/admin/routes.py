@@ -745,23 +745,22 @@ def departamento_eliminar(depto_id):
 @admin_bp.route('/requisiciones')
 @solo_admin
 def requisiciones():
-    """Panel de requisiciones del admin: formatos de salida de almacén."""
+    """Panel de requisiciones del admin: entradas y salidas de almacén agrupadas por departamento."""
     import os
+    from collections import defaultdict
 
-    filtro_depto = request.args.get('departamento', '', type=str)
+    ESTADOS_VISIBLES = ('pendiente', 'en_revision', 'aprobado', 'modificado', 'entregado')
+    ESTADOS_SALIDA   = ('aprobado', 'modificado', 'entregado')
 
-    query = (Pedido.query
-             .filter(Pedido.estado.in_(['aprobado', 'modificado', 'entregado']))
-             .order_by(Pedido.fecha_resolucion.desc()))
+    pedidos = (Pedido.query
+               .filter(Pedido.estado.in_(ESTADOS_VISIBLES))
+               .order_by(Pedido.fecha_solicitud.desc())
+               .all())
 
-    if filtro_depto:
-        query = query.filter_by(id_departamento=int(filtro_depto))
-
-    pedidos = query.all()
-    departamentos_lista = Departamento.query.filter_by(activo=True).order_by(
-        Departamento.nombre).all()
-
-    # Verificar existencia de archivos
+    base_pedidos = os.path.join(
+        os.path.dirname(os.path.dirname(__file__)),
+        'static', 'uploads', 'requisiciones', 'pedidos'
+    )
     base_salidas = os.path.join(
         os.path.dirname(os.path.dirname(__file__)),
         'static', 'uploads', 'requisiciones', 'salidas'
@@ -769,23 +768,68 @@ def requisiciones():
 
     formatos = {}
     for p in pedidos:
-        salida_path = os.path.join(base_salidas, f'{p.folio}_salida.xlsx')
+        entrada_path = os.path.join(base_pedidos, f'{p.folio}_requisicion.xlsx')
+        salida_path  = os.path.join(base_salidas,  f'{p.folio}_salida.xlsx')
 
-        # Auto-regenerar si no existe
-        if not os.path.exists(salida_path):
+        if not os.path.exists(entrada_path):
+            try:
+                from ..utils.formatos import generar_formato_pedido
+                generar_formato_pedido(p)
+            except Exception:
+                pass
+
+        if not os.path.exists(salida_path) and p.estado in ESTADOS_SALIDA:
             try:
                 from ..utils.formatos import generar_formato_salida
                 generar_formato_salida(p)
             except Exception:
                 pass
 
-        formatos[p.id] = os.path.exists(salida_path)
+        formatos[p.id] = {
+            'entrada': os.path.exists(entrada_path),
+            'salida':  os.path.exists(salida_path) and p.estado in ESTADOS_SALIDA,
+        }
+
+    # Agrupar por departamento (nombre → lista de pedidos)
+    por_depto = defaultdict(list)
+    for p in pedidos:
+        nombre_depto = p.departamento.nombre if p.departamento else 'Sin departamento'
+        por_depto[nombre_depto].append(p)
+
+    # Ordenar departamentos alfabéticamente
+    grupos = sorted(por_depto.items(), key=lambda x: x[0])
 
     return render_template('admin/requisiciones.html',
-                           pedidos=pedidos,
+                           grupos=grupos,
                            formatos=formatos,
-                           departamentos=departamentos_lista,
-                           filtro_depto=filtro_depto)
+                           total=len(pedidos))
+
+
+@admin_bp.route('/requisiciones/<int:pedido_id>/entrada.xlsx')
+@solo_admin
+def descargar_entrada_admin_xlsx(pedido_id):
+    """Descarga el formato de requisición de material / entrada (.xlsx)."""
+    import os
+    from flask import send_file
+
+    pedido = Pedido.query.get_or_404(pedido_id)
+
+    ruta = os.path.join(
+        os.path.dirname(os.path.dirname(__file__)),
+        'static', 'uploads', 'requisiciones', 'pedidos',
+        f'{pedido.folio}_requisicion.xlsx'
+    )
+
+    if not os.path.exists(ruta):
+        try:
+            from ..utils.formatos import generar_formato_pedido
+            generar_formato_pedido(pedido)
+        except Exception:
+            flash('No se pudo generar el formato de entrada.', 'danger')
+            return redirect(url_for('admin.requisiciones'))
+
+    return send_file(ruta, as_attachment=True,
+                     download_name=f'{pedido.folio}_entrada.xlsx')
 
 
 @admin_bp.route('/requisiciones/<int:pedido_id>/salida.xlsx')
@@ -808,7 +852,7 @@ def descargar_salida_admin_xlsx(pedido_id):
             from ..utils.formatos import generar_formato_salida
             generar_formato_salida(pedido)
         except Exception:
-            flash('No se pudo generar el formato.', 'danger')
+            flash('No se pudo generar el formato de salida.', 'danger')
             return redirect(url_for('admin.requisiciones'))
 
     return send_file(ruta, as_attachment=True,
