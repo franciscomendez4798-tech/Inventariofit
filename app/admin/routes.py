@@ -408,16 +408,16 @@ def _obtener_historial_consumo(pedido: Pedido) -> dict:
             p2.folio                AS ultimo_folio,
             dp2.cantidad_aprobada   AS ultima_cantidad,
             p2.fecha_resolucion     AS ultima_fecha
-        FROM  Detalle_Pedido dp2
-        JOIN  Pedidos p2 ON p2.id = dp2.id_pedido
+        FROM  "Detalle_Pedido" dp2
+        JOIN  "Pedidos" p2 ON p2.id = dp2.id_pedido
         WHERE p2.id_departamento = :depto_id
           AND p2.estado IN ('aprobado', 'entregado')
           AND p2.id    != :pedido_id
           AND dp2.id_material IN ({in_placeholders})
           AND p2.fecha_resolucion = (
                 SELECT MAX(p3.fecha_resolucion)
-                FROM   Pedidos p3
-                JOIN   Detalle_Pedido dp3 ON dp3.id_pedido = p3.id
+                FROM   "Pedidos" p3
+                JOIN   "Detalle_Pedido" dp3 ON dp3.id_pedido = p3.id
                 WHERE  p3.id_departamento = :depto_id
                   AND  p3.estado IN ('aprobado', 'entregado')
                   AND  p3.id    != :pedido_id
