@@ -214,29 +214,40 @@ def stock_bitacora():
 @solo_admin_o_mantenimiento
 def recepciones():
     """Historial de entradas (recepciones) al stock propio de Mantenimiento."""
-    q     = request.args.get('q', '').strip()
-    fecha = request.args.get('fecha', '')
+    q           = request.args.get('q', '').strip()
+    fecha_desde = request.args.get('fecha_desde', '')
+    fecha_hasta = request.args.get('fecha_hasta', '')
 
     query = (MovimientoStockMant.query
              .filter_by(tipo='entrada')
              .order_by(desc(MovimientoStockMant.fecha)))
+
     if q:
         query = query.join(StockMantenimiento).filter(
             StockMantenimiento.nombre.ilike(f'%{q}%')
         )
-    if fecha:
+    if fecha_desde:
         try:
-            fd = datetime.strptime(fecha, '%Y-%m-%d').date()
-            query = query.filter(db.func.date(MovimientoStockMant.fecha) == fd)
+            fd = datetime.strptime(fecha_desde, '%Y-%m-%d')
+            query = query.filter(MovimientoStockMant.fecha >= fd)
+        except ValueError:
+            pass
+    if fecha_hasta:
+        try:
+            from datetime import timedelta
+            fh = datetime.strptime(fecha_hasta, '%Y-%m-%d') + timedelta(days=1)
+            query = query.filter(MovimientoStockMant.fecha < fh)
         except ValueError:
             pass
 
-    recepciones = query.all()
+    recepciones_list = query.all()
     total_entradas = MovimientoStockMant.query.filter_by(tipo='entrada').count()
     return render_template('mantenimiento/recepciones.html',
-                           recepciones=recepciones,
+                           recepciones=recepciones_list,
                            total_entradas=total_entradas,
-                           q=q, fecha=fecha)
+                           q=q,
+                           fecha_desde=fecha_desde,
+                           fecha_hasta=fecha_hasta)
 
 
 @mantenimiento_bp.route('/recepcion/nueva', methods=['GET', 'POST'])
@@ -634,11 +645,25 @@ def pedidos_equipo():
 
     lista = query.all()
     trabajadores = Trabajador.query.filter_by(activo=True).order_by(Trabajador.nombre).all()
+
+    # Para pedidos aprobados/entregados, cargar en una sola query los ítems de
+    # stock vinculados a cada pedido (sin N+1).
+    ids_pedidos = [p.id for p in lista]
+    stock_por_pedido = {}
+    if ids_pedidos:
+        items_vinculados = (StockMantenimiento.query
+                            .filter(StockMantenimiento.id_pedido_equipo.in_(ids_pedidos))
+                            .order_by(StockMantenimiento.nombre)
+                            .all())
+        for item in items_vinculados:
+            stock_por_pedido.setdefault(item.id_pedido_equipo, []).append(item)
+
     return render_template('mantenimiento/pedidos_equipo.html',
                            pedidos=lista,
                            estado_f=estado_f,
                            q=q,
-                           trabajadores=trabajadores)
+                           trabajadores=trabajadores,
+                           stock_por_pedido=stock_por_pedido)
 
 
 @mantenimiento_bp.route('/pedidos-equipo/nuevo', methods=['GET', 'POST'])
