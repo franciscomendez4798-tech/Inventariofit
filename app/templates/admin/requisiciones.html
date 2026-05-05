@@ -86,32 +86,20 @@
             <td class="text-center">
               <div class="d-flex gap-1 justify-content-center">
 
-                {# Botón Entrada — siempre disponible si el archivo existe #}
-                {% if formatos[p.id].entrada %}
+                {# Botón Entrada — siempre disponible #}
                 <a href="{{ url_for('admin.descargar_entrada_admin_xlsx', pedido_id=p.id) }}"
                    class="btn btn-sm btn-outline-primary"
                    title="Descargar formato de entrada (requisición)">
-                  <i class="bi bi-download me-1"></i>Entrada
+                  <i class="bi bi-file-earmark-arrow-down me-1"></i>Entrada
                 </a>
-                {% else %}
-                <span class="btn btn-sm btn-outline-secondary disabled" style="opacity:.45"
-                      title="Formato de entrada no disponible">
-                  <i class="bi bi-hourglass me-1"></i>Entrada
-                </span>
-                {% endif %}
 
                 {# Botón Salida — solo si pedido aprobado/modificado/entregado #}
-                {% if formatos[p.id].salida %}
+                {% if formatos[p.id].tiene_salida %}
                 <a href="{{ url_for('admin.descargar_salida_admin_xlsx', pedido_id=p.id) }}"
                    class="btn btn-sm btn-outline-success"
                    title="Descargar formato de salida de almacén">
-                  <i class="bi bi-download me-1"></i>Salida
+                  <i class="bi bi-file-earmark-arrow-down me-1"></i>Salida
                 </a>
-                {% elif p.estado in ('aprobado', 'modificado', 'entregado') %}
-                <span class="btn btn-sm btn-outline-secondary disabled" style="opacity:.45"
-                      title="Generando formato de salida…">
-                  <i class="bi bi-hourglass me-1"></i>Salida
-                </span>
                 {% endif %}
 
               </div>

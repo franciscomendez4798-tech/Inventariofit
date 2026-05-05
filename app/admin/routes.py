@@ -746,7 +746,6 @@ def departamento_eliminar(depto_id):
 @solo_admin
 def requisiciones():
     """Panel de requisiciones del admin: entradas y salidas de almacén agrupadas por departamento."""
-    import os
     from collections import defaultdict
 
     ESTADOS_VISIBLES = ('pendiente', 'en_revision', 'aprobado', 'modificado', 'entregado')
@@ -757,46 +756,18 @@ def requisiciones():
                .order_by(Pedido.fecha_solicitud.desc())
                .all())
 
-    base_pedidos = os.path.join(
-        os.path.dirname(os.path.dirname(__file__)),
-        'static', 'uploads', 'requisiciones', 'pedidos'
-    )
-    base_salidas = os.path.join(
-        os.path.dirname(os.path.dirname(__file__)),
-        'static', 'uploads', 'requisiciones', 'salidas'
-    )
+    # Los botones siempre se muestran; la generación ocurre al descargar.
+    # Solo marcamos si el estado permite formato de salida.
+    formatos = {
+        p.id: {'tiene_salida': p.estado in ESTADOS_SALIDA}
+        for p in pedidos
+    }
 
-    formatos = {}
-    for p in pedidos:
-        entrada_path = os.path.join(base_pedidos, f'{p.folio}_requisicion.xlsx')
-        salida_path  = os.path.join(base_salidas,  f'{p.folio}_salida.xlsx')
-
-        if not os.path.exists(entrada_path):
-            try:
-                from ..utils.formatos import generar_formato_pedido
-                generar_formato_pedido(p)
-            except Exception:
-                pass
-
-        if not os.path.exists(salida_path) and p.estado in ESTADOS_SALIDA:
-            try:
-                from ..utils.formatos import generar_formato_salida
-                generar_formato_salida(p)
-            except Exception:
-                pass
-
-        formatos[p.id] = {
-            'entrada': os.path.exists(entrada_path),
-            'salida':  os.path.exists(salida_path) and p.estado in ESTADOS_SALIDA,
-        }
-
-    # Agrupar por departamento (nombre → lista de pedidos)
     por_depto = defaultdict(list)
     for p in pedidos:
         nombre_depto = p.departamento.nombre if p.departamento else 'Sin departamento'
         por_depto[nombre_depto].append(p)
 
-    # Ordenar departamentos alfabéticamente
     grupos = sorted(por_depto.items(), key=lambda x: x[0])
 
     return render_template('admin/requisiciones.html',
