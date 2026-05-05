@@ -9,6 +9,9 @@
   <link rel="icon" type="image/png" href="{{ url_for('static', filename='img/favicon.png') }}">
   <link rel="apple-touch-icon" href="{{ url_for('static', filename='img/favicon.png') }}">
 
+  <!-- CSRF token (leído por el JS para inyectarlo en todos los formularios) -->
+  <meta name="csrf-token" content="{{ csrf_token() }}">
+
   <!-- Google Fonts: Libre Baskerville (display) + Source Sans 3 (body) -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Libre+Baskerville:wght@400;700&family=Source+Sans+3:wght@300;400;600;700&display=swap" rel="stylesheet">
@@ -416,5 +419,40 @@ fetch('/api/pedidos-pendientes')
 </script>
 
 {% block scripts %}{% endblock %}
+
+<!-- ── Auto-inject CSRF token en todos los formularios POST ────────────────
+     Evita editar cada template individualmente. El token se lee del meta tag
+     y se inserta como campo oculto en cualquier <form method="post"> que aún
+     no lo contenga. También lo expone en window._csrfToken para fetch(). -->
+<script>
+(function () {
+  var meta = document.querySelector('meta[name="csrf-token"]');
+  if (!meta) return;
+  var token = meta.content;
+
+  // 1. Formularios HTML
+  document.querySelectorAll('form').forEach(function (form) {
+    if ((form.method || '').toLowerCase() === 'post' &&
+        !form.querySelector('input[name="csrf_token"]')) {
+      var inp = document.createElement('input');
+      inp.type  = 'hidden';
+      inp.name  = 'csrf_token';
+      inp.value = token;
+      form.appendChild(inp);
+    }
+  });
+
+  // 2. Fetch / XHR — exponer token globalmente para uso en JS de la app
+  window._csrfToken = token;
+  var _origFetch = window.fetch;
+  window.fetch = function (url, opts) {
+    opts = opts || {};
+    if (opts.method && opts.method.toUpperCase() !== 'GET') {
+      opts.headers = Object.assign({ 'X-CSRFToken': token }, opts.headers || {});
+    }
+    return _origFetch(url, opts);
+  };
+})();
+</script>
 </body>
 </html>

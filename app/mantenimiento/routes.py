@@ -1056,8 +1056,8 @@ def firmar_orden(orden_id):
                 orden.estado         = 'entregada'
                 orden.fecha_entrega  = datetime.utcnow()
 
-                # Firma digital HMAC-SHA256
-                secret = current_app.config.get('SECRET_KEY', '')
+                # Firma digital HMAC-SHA256 — usa clave dedicada separada de sesiones
+                secret = current_app.config.get('FIRMA_SECRET_KEY', '')
                 canonical, hmac_hex = generar_hmac(orden, secret)
                 orden.firma_tipo      = 'hmac_sha256'
                 orden.firma_hmac      = hmac_hex
@@ -1117,10 +1117,13 @@ def descargar_orden_docx(orden_id):
 def mi_firma_mant():
     """Guarda la firma digital del usuario de mantenimiento."""
     firma_obj = FirmaUsuario.query.filter_by(id_usuario=current_user.id).first()
+    _MAX_FIRMA = 600_000
     if request.method == 'POST':
         firma_b64 = request.form.get('firma_b64', '').strip()
         if not firma_b64 or len(firma_b64) < 100:
             flash('Firma inválida.', 'warning')
+        elif len(firma_b64) > _MAX_FIRMA:
+            flash('La firma excede el tamaño máximo permitido.', 'danger')
         else:
             if firma_obj:
                 firma_obj.firma_b64 = firma_b64
@@ -1139,10 +1142,13 @@ def firma_trabajador(trab_id):
     """Gestiona la firma digital de un trabajador (técnico)."""
     trabajador = Trabajador.query.get_or_404(trab_id)
     firma_obj  = FirmaTrabajador.query.filter_by(id_trabajador=trab_id).first()
+    _MAX_FIRMA = 600_000
     if request.method == 'POST':
         firma_b64 = request.form.get('firma_b64', '').strip()
         if not firma_b64 or len(firma_b64) < 100:
             flash('Firma inválida.', 'warning')
+        elif len(firma_b64) > _MAX_FIRMA:
+            flash('La firma excede el tamaño máximo permitido.', 'danger')
         else:
             if firma_obj:
                 firma_obj.firma_b64 = firma_b64

@@ -544,10 +544,14 @@ def mi_firma():
     from ..models import FirmaUsuario
     firma_obj = FirmaUsuario.query.filter_by(id_usuario=current_user.id).first()
 
+    _MAX_FIRMA = 600_000  # ~450 KB en base64
+
     if request.method == 'POST':
         firma_b64 = request.form.get('firma_b64', '').strip()
         if not firma_b64 or len(firma_b64) < 100:
             flash('Firma inválida. Dibuja tu firma e intenta de nuevo.', 'warning')
+        elif len(firma_b64) > _MAX_FIRMA:
+            flash('La firma excede el tamaño máximo permitido.', 'danger')
         else:
             if firma_obj:
                 firma_obj.firma_b64 = firma_b64

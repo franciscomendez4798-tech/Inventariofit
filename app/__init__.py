@@ -3,7 +3,7 @@ from flask import Flask, session, redirect, url_for, flash, request
 from flask_login import current_user, logout_user
 from datetime import datetime, timezone
 from config import config
-from .extensions import db, login_manager, migrate
+from .extensions import db, login_manager, migrate, csrf, limiter
 
 
 def create_app(config_name='default'):
@@ -16,6 +16,8 @@ def create_app(config_name='default'):
     db.init_app(app)
     login_manager.init_app(app)
     migrate.init_app(app, db)
+    csrf.init_app(app)
+    limiter.init_app(app)
 
     login_manager.login_view = 'auth.login'
     login_manager.login_message = 'Por favor inicia sesión para continuar.'
@@ -72,6 +74,32 @@ def create_app(config_name='default'):
     app.register_blueprint(sol_bp,     url_prefix='/portal')
     app.register_blueprint(api_bp,     url_prefix='/api')
     app.register_blueprint(mantenimiento_bp, url_prefix='/mantenimiento')
+
+    # ── Cabeceras de seguridad HTTP ───────────────────────────────────────
+    @app.after_request
+    def aplicar_cabeceras_seguridad(response):
+        # Evita que la app se incruste en iframes (clickjacking)
+        response.headers['X-Frame-Options'] = 'DENY'
+        # Previene que el navegador cambie el Content-Type (MIME sniffing)
+        response.headers['X-Content-Type-Options'] = 'nosniff'
+        # Limita referrer a mismo origen para no filtrar URLs internas
+        response.headers['Referrer-Policy'] = 'strict-origin-when-cross-origin'
+        # Fuerza HTTPS en producción (1 año)
+        if not app.debug:
+            response.headers['Strict-Transport-Security'] = (
+                'max-age=31536000; includeSubDomains'
+            )
+        # CSP: solo recursos del mismo origen + CDNs explícitos usados en el proyecto
+        response.headers['Content-Security-Policy'] = (
+            "default-src 'self'; "
+            "script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; "
+            "style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com "
+            "https://fonts.googleapis.com; "
+            "font-src 'self' https://cdnjs.cloudflare.com https://fonts.gstatic.com; "
+            "img-src 'self' data: https://*.supabase.co; "
+            "connect-src 'self';"
+        )
+        return response
 
     # ── Filtro Jinja2: imagen_url puede ser URL absoluta (Supabase) o ruta local
     from flask import url_for as _url_for
