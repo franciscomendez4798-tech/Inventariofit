@@ -276,6 +276,124 @@
 <!-- Bootstrap JS -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/js/bootstrap.bundle.min.js"></script>
 
+{% if current_user.is_authenticated %}
+<!-- ══════════════════════════════════════════════════════════
+     MODAL INACTIVIDAD
+══════════════════════════════════════════════════════════ -->
+<div class="modal fade" id="modalInactividad" tabindex="-1"
+     data-bs-backdrop="static" data-bs-keyboard="false"
+     aria-labelledby="modalInactividadLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content border-0 shadow-lg">
+      <div class="modal-header bg-warning text-dark">
+        <h5 class="modal-title fw-bold" id="modalInactividadLabel">
+          <i class="bi bi-clock-history me-2"></i>Sesión a punto de cerrarse
+        </h5>
+      </div>
+      <div class="modal-body text-center py-4">
+        <i class="bi bi-shield-lock-fill text-warning" style="font-size:3rem;"></i>
+        <p class="mt-3 mb-1">Tu sesión se cerrará en:</p>
+        <p class="display-4 fw-bold text-danger mb-1" id="cuentaRegresiva">10:00</p>
+        <p class="text-muted small">por inactividad prolongada.</p>
+        <p class="mb-0">¿Deseas mantener la sesión activa?</p>
+      </div>
+      <div class="modal-footer justify-content-center gap-3">
+        <a href="{{ url_for('auth.logout') }}"
+           class="btn btn-outline-secondary px-4">
+          <i class="bi bi-box-arrow-right me-1"></i>Cerrar sesión ahora
+        </a>
+        <button type="button" class="btn btn-warning px-4 fw-semibold"
+                id="btnSeguirActivo">
+          <i class="bi bi-activity me-1"></i>Continuar activo
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  // ── Configuración ──────────────────────────────────────────────────────
+  const INACTIVIDAD_MS   = 3 * 60 * 60 * 1000;   // 3 horas
+  const ADVERTENCIA_MS   = 10 * 60 * 1000;        // aviso 10 min antes
+  const LOGOUT_URL       = "{{ url_for('auth.logout') }}";
+
+  let timerAdvertencia   = null;
+  let timerLogout        = null;
+  let timerCuenta        = null;
+  let modalInstance      = null;
+
+  // ── Helpers ────────────────────────────────────────────────────────────
+  function formatearTiempo(ms) {
+    const totalSeg = Math.max(0, Math.floor(ms / 1000));
+    const min = Math.floor(totalSeg / 60).toString().padStart(2, '0');
+    const seg = (totalSeg % 60).toString().padStart(2, '0');
+    return `${min}:${seg}`;
+  }
+
+  function iniciarCuentaRegresiva() {
+    let restante = ADVERTENCIA_MS;
+    const el = document.getElementById('cuentaRegresiva');
+    if (el) el.textContent = formatearTiempo(restante);
+
+    timerCuenta = setInterval(() => {
+      restante -= 1000;
+      if (el) el.textContent = formatearTiempo(restante);
+      if (restante <= 0) clearInterval(timerCuenta);
+    }, 1000);
+  }
+
+  function mostrarModal() {
+    iniciarCuentaRegresiva();
+    if (!modalInstance) {
+      const el = document.getElementById('modalInactividad');
+      modalInstance = new bootstrap.Modal(el);
+    }
+    modalInstance.show();
+
+    // Logout definitivo al cumplirse los 10 min de cuenta regresiva
+    timerLogout = setTimeout(() => {
+      window.location.href = LOGOUT_URL;
+    }, ADVERTENCIA_MS);
+  }
+
+  function resetear() {
+    // Cancela todo y reinicia desde cero
+    clearTimeout(timerAdvertencia);
+    clearTimeout(timerLogout);
+    clearInterval(timerCuenta);
+
+    // Si el modal estaba abierto, cerrarlo
+    if (modalInstance) {
+      modalInstance.hide();
+      modalInstance = null;
+    }
+
+    // Reiniciar temporizadores
+    timerAdvertencia = setTimeout(mostrarModal, INACTIVIDAD_MS - ADVERTENCIA_MS);
+  }
+
+  // ── Detectar actividad del usuario ─────────────────────────────────────
+  const EVENTOS_ACTIVIDAD = [
+    'mousemove', 'mousedown', 'keydown',
+    'touchstart', 'scroll', 'click', 'wheel'
+  ];
+  EVENTOS_ACTIVIDAD.forEach(ev =>
+    document.addEventListener(ev, resetear, { passive: true })
+  );
+
+  // ── Botón "Continuar activo" ────────────────────────────────────────────
+  document.getElementById('btnSeguirActivo').addEventListener('click', resetear);
+
+  // ── Arranque inicial ───────────────────────────────────────────────────
+  resetear();
+
+})();
+</script>
+{% endif %}
+
 <script>
 function toggleSidebar() {
   document.getElementById('sidebar').classList.toggle('open');
