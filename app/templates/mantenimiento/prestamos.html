@@ -33,6 +33,7 @@
         <tbody class="border-top-0">
           {% for grupo in activos %}
           {% set rep = grupo[0] %}
+          {% set modal_id = 'dev-s-' ~ rep.sesion_id if rep.sesion_id else 'dev-' ~ rep.id %}
           <tr>
             <td class="ps-4">
               <div class="fw-semibold">{{ rep.fecha_prestamo.strftime('%d %b %Y') }}</div>
@@ -59,17 +60,10 @@
               </div>
             </td>
             <td class="pe-4 text-end">
-              {% if grupo|length == 1 %}
               <button type="button" class="btn btn-sm btn-outline-success"
-                      data-bs-toggle="modal" data-bs-target="#devolver-{{ grupo[0].id }}">
-                <i class="bi bi-arrow-return-left me-1"></i>Recibir
+                      data-bs-toggle="modal" data-bs-target="#{{ modal_id }}">
+                <i class="bi bi-arrow-return-left me-1"></i>Recibir{% if grupo|length > 1 %} ({{ grupo|length }}){% endif %}
               </button>
-              {% else %}
-              <button type="button" class="btn btn-sm btn-outline-success"
-                      data-bs-toggle="modal" data-bs-target="#devolver-grupo-{{ rep.sesion_id }}">
-                <i class="bi bi-arrow-return-left me-1"></i>Recibir ({{ grupo|length }})
-              </button>
-              {% endif %}
             </td>
           </tr>
           {% else %}
@@ -86,75 +80,88 @@
   </div>
 </div>
 
-{# ── Modales devolución individual ─────────────────────────────────────── #}
-{% for grupo in activos %}{% if grupo|length == 1 %}{% set p = grupo[0] %}
-<div class="modal fade" id="devolver-{{ p.id }}" tabindex="-1" aria-hidden="true">
-  <div class="modal-dialog modal-dialog-centered">
+{# ── Modales de devolución (uno por grupo, lógica unificada) ───────────── #}
+{% for grupo in activos %}
+{% set rep = grupo[0] %}
+{% set es_grupal = grupo|length > 1 %}
+{% set modal_id  = 'dev-s-' ~ rep.sesion_id if rep.sesion_id else 'dev-' ~ rep.id %}
+
+<div class="modal fade" id="{{ modal_id }}" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered {% if es_grupal %}modal-lg{% endif %}">
     <div class="modal-content border-0 shadow">
-      <form action="{{ url_for('mantenimiento.devolver_prestamo', prestamo_id=p.id) }}" method="POST">
+
+      {% if es_grupal %}
+      {# ── Formulario único para el grupo completo ── #}
+      <form action="{{ url_for('mantenimiento.devolver_sesion', sesion_id=rep.sesion_id) }}" method="POST">
+      {% else %}
+      <form action="{{ url_for('mantenimiento.devolver_prestamo', prestamo_id=grupo[0].id) }}" method="POST">
+      {% endif %}
+
         <div class="modal-header bg-light border-0">
-          <h5 class="modal-title fw-bold">Recibir Herramienta</h5>
+          <h5 class="modal-title fw-bold">
+            Recibir herramienta{% if es_grupal %}s{% endif %} — {{ rep.trabajador.nombre }}
+          </h5>
           <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
         </div>
+
         <div class="modal-body p-4">
-          <p class="mb-3">Recibiendo <strong>{{ p.herramienta.nombre if p.herramienta else '—' }}</strong>
-          de <strong>{{ p.trabajador.nombre }}</strong>.</p>
+
+          {% if es_grupal %}
+          {# Tabla con estado por herramienta #}
           <div class="mb-3">
-            <label class="form-label fw-semibold text-muted">Estado físico al devolver</label>
+            {% for p in grupo %}
+            <div class="d-flex align-items-center gap-3 py-2 {% if not loop.last %}border-bottom{% endif %}">
+              <div class="flex-grow-1 fw-semibold small">
+                <i class="bi bi-tools me-2 text-muted"></i>
+                {{ p.herramienta.nombre if p.herramienta else '—' }}
+                {% if p.herramienta and p.herramienta.codigo %}
+                <span class="text-muted fw-normal">({{ p.herramienta.codigo }})</span>
+                {% endif %}
+              </div>
+              <select name="estado_fisico_{{ p.id }}" class="form-select form-select-sm" style="width:150px">
+                <option value="bueno"   {% if p.herramienta and p.herramienta.estado_fisico == 'bueno'   %}selected{% endif %}>Bueno</option>
+                <option value="regular" {% if p.herramienta and p.herramienta.estado_fisico == 'regular' %}selected{% endif %}>Regular</option>
+                <option value="malo"    {% if p.herramienta and p.herramienta.estado_fisico == 'malo'    %}selected{% endif %}>Malo</option>
+              </select>
+            </div>
+            {% endfor %}
+          </div>
+          {% else %}
+          {% set p = grupo[0] %}
+          <p class="mb-3">
+            Recibiendo <strong>{{ p.herramienta.nombre if p.herramienta else '—' }}</strong>
+            de <strong>{{ p.trabajador.nombre }}</strong>.
+          </p>
+          <div class="mb-3">
+            <label class="form-label fw-semibold text-muted small">Estado físico al devolver</label>
             <select name="estado_fisico" class="form-select">
               <option value="bueno"   {% if p.herramienta and p.herramienta.estado_fisico == 'bueno'   %}selected{% endif %}>Bueno</option>
               <option value="regular" {% if p.herramienta and p.herramienta.estado_fisico == 'regular' %}selected{% endif %}>Regular</option>
               <option value="malo"    {% if p.herramienta and p.herramienta.estado_fisico == 'malo'    %}selected{% endif %}>Malo (Dañado)</option>
             </select>
           </div>
+          {% endif %}
+
+          {# Nota de devolución — siempre visible #}
+          <div class="mt-3">
+            <label class="form-label fw-semibold text-muted small">Nota de devolución</label>
+            <textarea name="notas_devolucion" class="form-control" rows="2"
+                      placeholder="Observaciones al recibir, daños, accesorios faltantes…"></textarea>
+          </div>
+
         </div>
+
         <div class="modal-footer border-0">
           <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancelar</button>
-          <button type="submit" class="btn btn-success">Confirmar Devolución</button>
+          <button type="submit" class="btn btn-success">
+            <i class="bi bi-check-lg me-1"></i>Confirmar devolución
+          </button>
         </div>
+
       </form>
     </div>
   </div>
 </div>
-{% endif %}{% endfor %}
-
-{# ── Modales devolución grupal ──────────────────────────────────────────── #}
-{% for grupo in activos %}{% if grupo|length > 1 %}{% set rep = grupo[0] %}
-<div class="modal fade" id="devolver-grupo-{{ rep.sesion_id }}" tabindex="-1" aria-hidden="true">
-  <div class="modal-dialog modal-dialog-centered modal-lg">
-    <div class="modal-content border-0 shadow">
-      <div class="modal-header bg-light border-0">
-        <h5 class="modal-title fw-bold">Recibir herramientas — {{ rep.trabajador.nombre }}</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-      </div>
-      <div class="modal-body p-4">
-        <p class="text-muted mb-3">Registra el estado de cada herramienta al recibirla.</p>
-        {% for p in grupo %}
-        <form action="{{ url_for('mantenimiento.devolver_prestamo', prestamo_id=p.id) }}" method="POST"
-              class="d-flex align-items-center gap-3 mb-3 p-3 border rounded">
-          <div class="flex-grow-1 fw-semibold">
-            <i class="bi bi-tools me-2 text-muted"></i>{{ p.herramienta.nombre if p.herramienta else '—' }}
-            {% if p.herramienta and p.herramienta.codigo %}
-            <span class="text-muted fw-normal small ms-1">({{ p.herramienta.codigo }})</span>
-            {% endif %}
-          </div>
-          <select name="estado_fisico" class="form-select form-select-sm" style="width:160px">
-            <option value="bueno"   {% if p.herramienta and p.herramienta.estado_fisico == 'bueno'   %}selected{% endif %}>Bueno</option>
-            <option value="regular" {% if p.herramienta and p.herramienta.estado_fisico == 'regular' %}selected{% endif %}>Regular</option>
-            <option value="malo"    {% if p.herramienta and p.herramienta.estado_fisico == 'malo'    %}selected{% endif %}>Malo</option>
-          </select>
-          <button type="submit" class="btn btn-sm btn-outline-success">
-            <i class="bi bi-arrow-return-left"></i>
-          </button>
-        </form>
-        {% endfor %}
-      </div>
-      <div class="modal-footer border-0">
-        <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cerrar</button>
-      </div>
-    </div>
-  </div>
-</div>
-{% endif %}{% endfor %}
+{% endfor %}
 
 {% endblock %}

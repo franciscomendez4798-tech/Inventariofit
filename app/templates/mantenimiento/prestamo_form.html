@@ -30,29 +30,19 @@
       </div>
     </div>
 
-    {# ── Herramientas ─────────────────────────────────────────────────────── #}
+    {# ── Herramientas ──────────────────────────────────────────────────────── #}
     <div class="premium-card mb-4 animate-fade-in delay-2">
       <div class="card-body p-4">
         <h6 class="fw-semibold text-muted text-uppercase mb-3" style="font-size:.75rem;letter-spacing:.6px">
           <i class="bi bi-tools me-2"></i>Herramientas
         </h6>
 
-        <div id="lista-herramientas">
-          {# Fila inicial #}
-          <div class="herramienta-row d-flex gap-2 align-items-center mb-2">
-            <select name="id_herramienta" class="form-select" required>
-              <option value="">Seleccione herramienta…</option>
-              {% for h in herramientas %}
-              <option value="{{ h.id }}">
-                {{ h.nombre }}{% if h.codigo %} ({{ h.codigo }}){% endif %} — {{ h.estado_fisico|capitalize }}
-              </option>
-              {% endfor %}
-            </select>
-            <button type="button" class="btn btn-outline-danger btn-sm btn-quitar" style="display:none" title="Quitar">
-              <i class="bi bi-x-lg"></i>
-            </button>
-          </div>
-        </div>
+        {# Datos de herramientas disponibles para JS #}
+        <script id="data-herramientas" type="application/json">
+          [{% for h in herramientas %}{"id":"{{ h.id }}","label":"{{ h.nombre }}{% if h.codigo %} ({{ h.codigo }}){% endif %} — {{ h.estado_fisico|capitalize }}"}{% if not loop.last %},{% endif %}{% endfor %}]
+        </script>
+
+        <div id="lista-herramientas"></div>
 
         {% if not herramientas %}
         <div class="text-danger small mt-2">
@@ -61,7 +51,8 @@
         </div>
         {% endif %}
 
-        <button type="button" id="btn-agregar" class="btn btn-outline-secondary btn-sm mt-3 d-flex align-items-center gap-2"
+        <button type="button" id="btn-agregar"
+                class="btn btn-outline-secondary btn-sm mt-3 d-flex align-items-center gap-2"
                 {% if not herramientas %}disabled{% endif %}>
           <i class="bi bi-plus-lg"></i> Agregar otra herramienta
         </button>
@@ -75,7 +66,7 @@
           <i class="bi bi-chat-left-text me-2"></i>Notas / Actividad
         </h6>
         <textarea name="notas" class="form-control" rows="2"
-                  placeholder="Ej. Reparación de área Salón 211, se llevan todos los accesorios…"></textarea>
+                  placeholder="Ej. Reparación área Salón 211, se llevan accesorios completos…"></textarea>
       </div>
     </div>
 
@@ -93,46 +84,100 @@
 {% block scripts %}
 <script>
 (function () {
-  const lista    = document.getElementById('lista-herramientas');
+  const datos      = JSON.parse(document.getElementById('data-herramientas').textContent);
+  const lista      = document.getElementById('lista-herramientas');
   const btnAgregar = document.getElementById('btn-agregar');
 
-  // Obtener HTML de la primera fila para clonar
-  const primeraFila = lista.querySelector('.herramienta-row');
+  // Mapa id → {label, filaQueLoUsa: null}
+  const herramientas = {};
+  datos.forEach(function (h) { herramientas[h.id] = { label: h.label, usadaPor: null }; });
+
+  let filaCount = 0;
+
+  function seleccionadasActuales() {
+    // Devuelve Set de ids seleccionados en todas las filas
+    const sel = new Set();
+    lista.querySelectorAll('select.sel-herramienta').forEach(function (s) {
+      if (s.value) sel.add(s.value);
+    });
+    return sel;
+  }
+
+  function reconstruirSelect(selectEl, valorActual) {
+    // Limpia y rellena las opciones bloqueando las ya usadas en otras filas
+    const usadas = seleccionadasActuales();
+    selectEl.innerHTML = '<option value="">Seleccione herramienta…</option>';
+    datos.forEach(function (h) {
+      const opt = document.createElement('option');
+      opt.value = h.id;
+      opt.textContent = h.label;
+      if (h.id === valorActual) {
+        opt.selected = true;           // mantiene la selección actual
+      } else if (usadas.has(h.id)) {
+        opt.disabled = true;           // bloquea lo ya elegido en otra fila
+        opt.style.color = '#adb5bd';
+      }
+      selectEl.appendChild(opt);
+    });
+  }
+
+  function sincronizarTodos(exceptoSel) {
+    // Reconstruye todos los selects para reflejar cambios
+    lista.querySelectorAll('select.sel-herramienta').forEach(function (s) {
+      if (s === exceptoSel) return;
+      reconstruirSelect(s, s.value);
+    });
+  }
+
+  function crearFila() {
+    filaCount++;
+    const div = document.createElement('div');
+    div.className = 'herramienta-row d-flex gap-2 align-items-center mb-2';
+    div.dataset.fila = filaCount;
+
+    const sel = document.createElement('select');
+    sel.name = 'id_herramienta';
+    sel.className = 'form-select sel-herramienta';
+    if (filaCount === 1) sel.required = true;
+
+    reconstruirSelect(sel, '');
+
+    sel.addEventListener('change', function () {
+      sincronizarTodos(sel);           // actualiza los demás al cambiar éste
+    });
+
+    const btnQuitar = document.createElement('button');
+    btnQuitar.type = 'button';
+    btnQuitar.className = 'btn btn-outline-danger btn-sm';
+    btnQuitar.title = 'Quitar';
+    btnQuitar.innerHTML = '<i class="bi bi-x-lg"></i>';
+    btnQuitar.addEventListener('click', function () {
+      div.remove();
+      actualizarBotonesQuitar();
+      sincronizarTodos(null);          // libera la opción en los demás
+    });
+
+    div.appendChild(sel);
+    div.appendChild(btnQuitar);
+    lista.appendChild(div);
+    actualizarBotonesQuitar();
+    return sel;
+  }
 
   function actualizarBotonesQuitar() {
     const filas = lista.querySelectorAll('.herramienta-row');
-    filas.forEach(function (fila) {
-      const btn = fila.querySelector('.btn-quitar');
-      btn.style.display = filas.length > 1 ? '' : 'none';
+    filas.forEach(function (f) {
+      f.querySelector('.btn-outline-danger').style.display = filas.length > 1 ? '' : 'none';
     });
   }
 
-  function nuevaFila() {
-    const clon = primeraFila.cloneNode(true);
-    // Resetear el select clonado
-    clon.querySelector('select').value = '';
-    clon.querySelector('select').removeAttribute('required'); // solo la primera es required
-    // Botón quitar
-    const btnQuitar = clon.querySelector('.btn-quitar');
-    btnQuitar.style.display = '';
-    btnQuitar.addEventListener('click', function () {
-      clon.remove();
-      actualizarBotonesQuitar();
-    });
-    lista.appendChild(clon);
-    actualizarBotonesQuitar();
-    clon.querySelector('select').focus();
-  }
-
-  // Botón quitar en la fila inicial
-  primeraFila.querySelector('.btn-quitar').addEventListener('click', function () {
-    primeraFila.remove();
-    actualizarBotonesQuitar();
+  btnAgregar.addEventListener('click', function () {
+    const sel = crearFila();
+    sel.focus();
   });
 
-  btnAgregar.addEventListener('click', nuevaFila);
-
-  actualizarBotonesQuitar();
+  // Fila inicial
+  crearFila();
 })();
 </script>
 {% endblock %}

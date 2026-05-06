@@ -179,7 +179,8 @@ class Prestamo(db.Model):
     fecha_devolucion = db.Column(db.DateTime, nullable=True)
     estado = db.Column(db.String(20), default='prestado')  # prestado, devuelto
     notas = db.Column(db.Text)
-    sesion_id = db.Column(db.Integer, nullable=True)  # agrupa herramientas del mismo préstamo
+    sesion_id        = db.Column(db.Integer, nullable=True)  # agrupa herramientas del mismo préstamo
+    notas_devolucion = db.Column(db.Text, nullable=True)
 
     herramienta = db.relationship('Herramienta', back_populates='prestamos')
     trabajador = db.relationship('Trabajador', back_populates='prestamos')

@@ -598,19 +598,41 @@ def prestamo_form():
 @mantenimiento_bp.route('/prestamo/<int:prestamo_id>/devolver', methods=['POST'])
 @solo_admin_o_mantenimiento
 def devolver_prestamo(prestamo_id):
+    """Devolución de un préstamo individual (sin sesion_id o grupo de 1)."""
     prestamo = Prestamo.query.get_or_404(prestamo_id)
     if prestamo.estado == 'prestado':
         prestamo.estado           = 'devuelto'
         prestamo.fecha_devolucion = datetime.utcnow()
-        prestamo.herramienta.disponible = True
-        
-        # Opcional: Actualizar el estado físico si se reporta en la devolución
-        estado_fisico = request.form.get('estado_fisico')
-        if estado_fisico:
-            prestamo.herramienta.estado_fisico = estado_fisico
-
+        prestamo.notas_devolucion = request.form.get('notas_devolucion', '').strip() or None
+        if prestamo.herramienta:
+            prestamo.herramienta.disponible = True
+            ef = request.form.get('estado_fisico')
+            if ef:
+                prestamo.herramienta.estado_fisico = ef
         db.session.commit()
         flash('Herramienta devuelta a la bodega.', 'success')
+    return redirect(url_for('mantenimiento.prestamos'))
+
+
+@mantenimiento_bp.route('/prestamo/sesion/<int:sesion_id>/devolver', methods=['POST'])
+@solo_admin_o_mantenimiento
+def devolver_sesion(sesion_id):
+    """Devolución unificada de todas las herramientas de una sesión."""
+    prestamos = Prestamo.query.filter_by(sesion_id=sesion_id, estado='prestado').all()
+    nota = request.form.get('notas_devolucion', '').strip() or None
+    ahora = datetime.utcnow()
+    for p in prestamos:
+        p.estado           = 'devuelto'
+        p.fecha_devolucion = ahora
+        p.notas_devolucion = nota
+        ef = request.form.get(f'estado_fisico_{p.id}')
+        if p.herramienta:
+            p.herramienta.disponible = True
+            if ef:
+                p.herramienta.estado_fisico = ef
+    db.session.commit()
+    n = len(prestamos)
+    flash(f'{n} herramienta{"s" if n != 1 else ""} devuelta{"s" if n != 1 else ""} a la bodega.', 'success')
     return redirect(url_for('mantenimiento.prestamos'))
 
 
