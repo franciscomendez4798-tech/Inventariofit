@@ -1,64 +1,138 @@
 {% extends 'base.html' %}
 {% block title %}Registrar Préstamo{% endblock %}
 {% block breadcrumb %}
-  <a href="{{ url_for('mantenimiento.panel') }}" class="text-muted text-decoration-none">Mantenimiento</a>
-  <span class="mx-2 text-muted">&rsaquo;</span>
   <a href="{{ url_for('mantenimiento.prestamos') }}" class="text-muted text-decoration-none">Préstamos</a>
   <span class="mx-2 text-muted">&rsaquo;</span>
   <strong>Nuevo Préstamo</strong>
 {% endblock %}
 
 {% block content %}
-<div class="row justify-content-center">
-  <div class="col-md-8 col-lg-6">
-    <div class="animate-fade-in">
-      <h1 class="page-title-gradient">Asignar Herramienta</h1>
-      <p class="page-subtitle mb-4">Registra la salida temporal de una herramienta de la bodega a un trabajador.</p>
-    </div>
+<div style="max-width:700px">
+  <div class="animate-fade-in mb-4">
+    <h1 class="page-title-gradient">Asignar Herramientas</h1>
+    <p class="page-subtitle">Registra la salida temporal de una o varias herramientas a un trabajador.</p>
+  </div>
 
-    <div class="premium-card animate-fade-in delay-1">
+  <form method="POST" id="form-prestamo">
+
+    {# ── Trabajador ────────────────────────────────────────────────────────── #}
+    <div class="premium-card mb-4 animate-fade-in delay-1">
       <div class="card-body p-4">
-        <form method="POST">
-          <div class="mb-4">
-            <label class="form-label fw-bold text-dark">Herramienta <span class="text-danger">*</span></label>
-            <select name="id_herramienta" class="form-select form-select-lg bg-light" required autofocus>
-              <option value="">Seleccione la herramienta...</option>
-              {% for h in herramientas %}
-                <option value="{{ h.id }}">
-                  {{ h.nombre }} {% if h.codigo %}({{ h.codigo }}){% endif %} - {{ h.estado_fisico|capitalize }}
-                </option>
-              {% endfor %}
-            </select>
-            {% if not herramientas %}
-            <div class="form-text text-danger mt-2">
-              <i class="bi bi-exclamation-triangle"></i> No hay herramientas disponibles o todas están en uso. 
-              <a href="{{ url_for('mantenimiento.herramienta_form') }}">Agregar una nueva</a>.
-            </div>
-            {% endif %}
-          </div>
-
-          <div class="mb-4">
-            <label class="form-label fw-bold text-dark">Trabajador asignado <span class="text-danger">*</span></label>
-            <select name="id_trabajador" class="form-select form-select-lg" required>
-              <option value="">Seleccione trabajador...</option>
-              {% for t in trabajadores %}
-                <option value="{{ t.id }}">{{ t.nombre }} ({{ t.cargo }})</option>
-              {% endfor %}
-            </select>
-          </div>
-
-          <div class="mb-4">
-            <label class="form-label fw-semibold text-muted">Notas u observaciones al momento del préstamo</label>
-            <textarea name="notas" class="form-control" rows="3" placeholder="Ej. Se entrega con accesorios completos..."></textarea>
-          </div>
-
-          <div class="d-flex justify-content-end gap-2 mt-5">
-            <a href="{{ url_for('mantenimiento.prestamos') }}" class="btn btn-light px-4">Cancelar</a>
-            <button type="submit" class="btn btn-primary px-5" {% if not herramientas %}disabled{% endif %}>Registrar Préstamo</button>
-          </div>
-        </form>
+        <h6 class="fw-semibold text-muted text-uppercase mb-3" style="font-size:.75rem;letter-spacing:.6px">
+          <i class="bi bi-person me-2"></i>Trabajador
+        </h6>
+        <select name="id_trabajador" class="form-select" required>
+          <option value="">Seleccione trabajador…</option>
+          {% for t in trabajadores %}
+          <option value="{{ t.id }}">{{ t.nombre }} — {{ t.cargo }}</option>
+          {% endfor %}
+        </select>
       </div>
     </div>
-  </div>
+
+    {# ── Herramientas ─────────────────────────────────────────────────────── #}
+    <div class="premium-card mb-4 animate-fade-in delay-2">
+      <div class="card-body p-4">
+        <h6 class="fw-semibold text-muted text-uppercase mb-3" style="font-size:.75rem;letter-spacing:.6px">
+          <i class="bi bi-tools me-2"></i>Herramientas
+        </h6>
+
+        <div id="lista-herramientas">
+          {# Fila inicial #}
+          <div class="herramienta-row d-flex gap-2 align-items-center mb-2">
+            <select name="id_herramienta" class="form-select" required>
+              <option value="">Seleccione herramienta…</option>
+              {% for h in herramientas %}
+              <option value="{{ h.id }}">
+                {{ h.nombre }}{% if h.codigo %} ({{ h.codigo }}){% endif %} — {{ h.estado_fisico|capitalize }}
+              </option>
+              {% endfor %}
+            </select>
+            <button type="button" class="btn btn-outline-danger btn-sm btn-quitar" style="display:none" title="Quitar">
+              <i class="bi bi-x-lg"></i>
+            </button>
+          </div>
+        </div>
+
+        {% if not herramientas %}
+        <div class="text-danger small mt-2">
+          <i class="bi bi-exclamation-triangle me-1"></i>No hay herramientas disponibles.
+          <a href="{{ url_for('mantenimiento.herramienta_form') }}">Agregar una nueva</a>.
+        </div>
+        {% endif %}
+
+        <button type="button" id="btn-agregar" class="btn btn-outline-secondary btn-sm mt-3 d-flex align-items-center gap-2"
+                {% if not herramientas %}disabled{% endif %}>
+          <i class="bi bi-plus-lg"></i> Agregar otra herramienta
+        </button>
+      </div>
+    </div>
+
+    {# ── Notas ─────────────────────────────────────────────────────────────── #}
+    <div class="premium-card mb-4 animate-fade-in delay-3">
+      <div class="card-body p-4">
+        <h6 class="fw-semibold text-muted text-uppercase mb-3" style="font-size:.75rem;letter-spacing:.6px">
+          <i class="bi bi-chat-left-text me-2"></i>Notas / Actividad
+        </h6>
+        <textarea name="notas" class="form-control" rows="2"
+                  placeholder="Ej. Reparación de área Salón 211, se llevan todos los accesorios…"></textarea>
+      </div>
+    </div>
+
+    <div class="d-flex gap-2">
+      <button type="submit" class="btn btn-primary px-4" {% if not herramientas %}disabled{% endif %}>
+        <i class="bi bi-check-lg me-2"></i>Registrar Préstamo
+      </button>
+      <a href="{{ url_for('mantenimiento.prestamos') }}" class="btn btn-outline-secondary px-4">Cancelar</a>
+    </div>
+
+  </form>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+  const lista    = document.getElementById('lista-herramientas');
+  const btnAgregar = document.getElementById('btn-agregar');
+
+  // Obtener HTML de la primera fila para clonar
+  const primeraFila = lista.querySelector('.herramienta-row');
+
+  function actualizarBotonesQuitar() {
+    const filas = lista.querySelectorAll('.herramienta-row');
+    filas.forEach(function (fila) {
+      const btn = fila.querySelector('.btn-quitar');
+      btn.style.display = filas.length > 1 ? '' : 'none';
+    });
+  }
+
+  function nuevaFila() {
+    const clon = primeraFila.cloneNode(true);
+    // Resetear el select clonado
+    clon.querySelector('select').value = '';
+    clon.querySelector('select').removeAttribute('required'); // solo la primera es required
+    // Botón quitar
+    const btnQuitar = clon.querySelector('.btn-quitar');
+    btnQuitar.style.display = '';
+    btnQuitar.addEventListener('click', function () {
+      clon.remove();
+      actualizarBotonesQuitar();
+    });
+    lista.appendChild(clon);
+    actualizarBotonesQuitar();
+    clon.querySelector('select').focus();
+  }
+
+  // Botón quitar en la fila inicial
+  primeraFila.querySelector('.btn-quitar').addEventListener('click', function () {
+    primeraFila.remove();
+    actualizarBotonesQuitar();
+  });
+
+  btnAgregar.addEventListener('click', nuevaFila);
+
+  actualizarBotonesQuitar();
+})();
+</script>
 {% endblock %}

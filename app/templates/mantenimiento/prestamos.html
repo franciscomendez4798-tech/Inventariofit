@@ -12,10 +12,17 @@
 {% block content %}
 <div class="animate-fade-in">
   <h1 class="page-title-gradient">Préstamos de Herramientas</h1>
-  <p class="page-subtitle mb-4">Registro de herramientas de la bodega asignadas temporalmente al personal.</p>
+  <p class="page-subtitle mb-4">Herramientas de bodega asignadas temporalmente al personal.</p>
 </div>
 
-<div class="premium-card animate-fade-in delay-1">
+{# ═══════════════════════════════════════════════════════════ ACTIVOS ═══ #}
+<div class="d-flex align-items-center gap-2 mb-3">
+  <i class="bi bi-clock-history text-warning"></i>
+  <h6 class="fw-bold text-uppercase mb-0" style="font-size:.8rem;letter-spacing:.6px">En uso</h6>
+  <span class="badge bg-warning text-dark rounded-pill">{{ activos|length }}</span>
+</div>
+
+<div class="premium-card animate-fade-in delay-1 mb-5">
   <div class="card-body p-0">
     <div class="table-responsive">
       <table class="table table-hover align-middle mb-0">
@@ -23,55 +30,59 @@
           <tr>
             <th class="border-0 ps-4 py-3">Fecha</th>
             <th class="border-0 py-3">Trabajador</th>
-            <th class="border-0 py-3">Herramienta</th>
-            <th class="border-0 py-3 text-center">Estado</th>
-            <th class="border-0 pe-4 py-3 text-end">Acciones / Devolución</th>
+            <th class="border-0 py-3">Herramientas</th>
+            <th class="border-0 pe-4 py-3 text-end">Devolución</th>
           </tr>
         </thead>
         <tbody class="border-top-0">
-          {% for p in prestamos %}
+          {% for grupo in activos %}
+          {% set rep = grupo[0] %}
           <tr>
             <td class="ps-4">
-              <div class="fw-semibold">{{ p.fecha_prestamo.strftime('%d %b %Y') }}</div>
-              <div class="text-muted small">{{ p.fecha_prestamo.strftime('%H:%M') }}</div>
+              <div class="fw-semibold">{{ rep.fecha_prestamo.strftime('%d %b %Y') }}</div>
+              <div class="text-muted small">{{ rep.fecha_prestamo.strftime('%H:%M') }}</div>
             </td>
             <td>
-              <div class="fw-bold text-dark"><i class="bi bi-person me-1 text-muted"></i>{{ p.trabajador.nombre }}</div>
-              <div class="small text-muted">{{ p.notas or 'Sin notas' }}</div>
+              <div class="fw-bold text-dark">
+                <i class="bi bi-person me-1 text-muted"></i>{{ rep.trabajador.nombre }}
+              </div>
+              <div class="small text-muted">{{ rep.notas or 'Sin notas' }}</div>
             </td>
             <td>
-              <div class="fw-bold text-dark">{{ p.herramienta.nombre if p.herramienta else '—' }}</div>
-              <div class="small text-muted">{{ p.herramienta.codigo if p.herramienta else '' }}</div>
-            </td>
-            <td class="text-center">
-              {% if p.estado == 'prestado' %}
-                <span class="badge bg-warning text-dark border border-warning border-opacity-50 rounded-pill px-3 py-2 fs-6">
-                  <i class="bi bi-clock-history me-1"></i>En uso
-                </span>
-              {% else %}
-                <span class="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25 rounded-pill px-3 py-2 fs-6">
-                  <i class="bi bi-check2-all me-1"></i>Devuelto
-                </span>
-                <div class="small text-muted mt-1">{{ p.fecha_devolucion.strftime('%d %b') if p.fecha_devolucion else '' }}</div>
-              {% endif %}
+              <div class="d-flex flex-column gap-1">
+                {% for p in grupo %}
+                <div class="d-flex align-items-center gap-2">
+                  <span class="badge bg-warning text-dark border border-warning border-opacity-50 rounded-pill px-2 py-1" style="font-size:.72rem">
+                    <i class="bi bi-tools me-1"></i>{{ p.herramienta.nombre if p.herramienta else '—' }}
+                  </span>
+                  {% if p.herramienta %}
+                  <span class="text-muted" style="font-size:.72rem">{{ p.herramienta.codigo or '' }}</span>
+                  {% endif %}
+                </div>
+                {% endfor %}
+              </div>
             </td>
             <td class="pe-4 text-end">
-              {% if p.estado == 'prestado' %}
-              <button type="button" class="btn btn-sm btn-outline-success"
-                      data-bs-toggle="modal"
-                      data-bs-target="#devolver-{{ p.id }}">
-                <i class="bi bi-arrow-return-left me-1"></i>Recibir
-              </button>
+              {% if grupo|length == 1 %}
+                {# Devolución individual #}
+                <button type="button" class="btn btn-sm btn-outline-success"
+                        data-bs-toggle="modal" data-bs-target="#devolver-{{ grupo[0].id }}">
+                  <i class="bi bi-arrow-return-left me-1"></i>Recibir
+                </button>
               {% else %}
-                <span class="text-muted">—</span>
+                {# Botón para devolver todo el grupo #}
+                <button type="button" class="btn btn-sm btn-outline-success"
+                        data-bs-toggle="modal" data-bs-target="#devolver-grupo-{{ rep.sesion_id }}">
+                  <i class="bi bi-arrow-return-left me-1"></i>Recibir ({{ grupo|length }})
+                </button>
               {% endif %}
             </td>
           </tr>
           {% else %}
           <tr>
-            <td colspan="5" class="text-center py-5 text-muted">
-              <i class="bi bi-wrench-adjustable fs-1 text-light d-block mb-2"></i>
-              No hay préstamos registrados aún.
+            <td colspan="4" class="text-center py-5 text-muted">
+              <i class="bi bi-check-circle fs-1 text-light d-block mb-2"></i>
+              No hay herramientas en uso actualmente.
             </td>
           </tr>
           {% endfor %}
@@ -81,41 +92,150 @@
   </div>
 </div>
 
-{# ── Modales fuera de la tabla para evitar HTML inválido ───────────────── #}
-{% for p in prestamos %}
-{% if p.estado == 'prestado' %}
-<div class="modal fade" id="devolver-{{ p.id }}" tabindex="-1" aria-hidden="true">
-  <div class="modal-dialog modal-dialog-centered">
-    <div class="modal-content border-0 shadow">
-      <form action="{{ url_for('mantenimiento.devolver_prestamo', prestamo_id=p.id) }}" method="POST">
-        <div class="modal-header bg-light border-0">
-          <h5 class="modal-title fw-bold">Recibir Herramienta</h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-        </div>
-        <div class="modal-body p-4">
-          <p class="mb-3">
-            Registrando devolución de
-            <strong>{{ p.herramienta.nombre if p.herramienta else '—' }}</strong>
-            de parte de <strong>{{ p.trabajador.nombre }}</strong>.
-          </p>
-          <div class="mb-3">
-            <label class="form-label fw-semibold text-muted">Estado físico al devolver</label>
-            <select name="estado_fisico" class="form-select">
-              <option value="bueno"   {% if p.herramienta and p.herramienta.estado_fisico == 'bueno'   %}selected{% endif %}>Bueno</option>
-              <option value="regular" {% if p.herramienta and p.herramienta.estado_fisico == 'regular' %}selected{% endif %}>Regular</option>
-              <option value="malo"    {% if p.herramienta and p.herramienta.estado_fisico == 'malo'    %}selected{% endif %}>Malo (Dañado)</option>
-            </select>
-          </div>
-        </div>
-        <div class="modal-footer border-0">
-          <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancelar</button>
-          <button type="submit" class="btn btn-success">Confirmar Devolución</button>
-        </div>
-      </form>
+{# ════════════════════════════════════════════════════════ HISTORIAL ════ #}
+<div class="d-flex align-items-center gap-2 mb-3">
+  <i class="bi bi-journal-text text-muted"></i>
+  <h6 class="fw-bold text-uppercase mb-0" style="font-size:.8rem;letter-spacing:.6px">Historial de préstamos</h6>
+  <span class="badge bg-secondary bg-opacity-20 text-secondary rounded-pill">{{ historial|length }}</span>
+</div>
+
+<div class="premium-card animate-fade-in delay-2">
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table class="table table-hover align-middle mb-0">
+        <thead class="bg-light text-muted small text-uppercase fw-semibold" style="letter-spacing:.5px">
+          <tr>
+            <th class="border-0 ps-4 py-3">Fecha préstamo</th>
+            <th class="border-0 py-3">Trabajador</th>
+            <th class="border-0 py-3">Herramientas</th>
+            <th class="border-0 py-3 text-center">Devuelto</th>
+          </tr>
+        </thead>
+        <tbody class="border-top-0">
+          {% for grupo in historial %}
+          {% set rep = grupo[0] %}
+          <tr>
+            <td class="ps-4">
+              <div class="fw-semibold">{{ rep.fecha_prestamo.strftime('%d %b %Y') }}</div>
+              <div class="text-muted small">{{ rep.fecha_prestamo.strftime('%H:%M') }}</div>
+            </td>
+            <td>
+              <div class="fw-bold text-dark">
+                <i class="bi bi-person me-1 text-muted"></i>{{ rep.trabajador.nombre }}
+              </div>
+              <div class="small text-muted">{{ rep.notas or 'Sin notas' }}</div>
+            </td>
+            <td>
+              <div class="d-flex flex-column gap-1">
+                {% for p in grupo %}
+                <div class="d-flex align-items-center gap-2">
+                  <span class="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25 rounded-pill px-2 py-1" style="font-size:.72rem">
+                    <i class="bi bi-check2 me-1"></i>{{ p.herramienta.nombre if p.herramienta else '—' }}
+                  </span>
+                  {% if p.fecha_devolucion %}
+                  <span class="text-muted" style="font-size:.72rem">{{ p.fecha_devolucion.strftime('%d %b') }}</span>
+                  {% endif %}
+                </div>
+                {% endfor %}
+              </div>
+            </td>
+            <td class="text-center">
+              <span class="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25 rounded-pill px-2 py-1">
+                <i class="bi bi-check2-all me-1"></i>Devuelto
+              </span>
+            </td>
+          </tr>
+          {% else %}
+          <tr>
+            <td colspan="4" class="text-center py-5 text-muted">
+              <i class="bi bi-journal fs-1 text-light d-block mb-2"></i>
+              Sin historial de préstamos aún.
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
     </div>
   </div>
 </div>
-{% endif %}
+
+{# ══════════════════════════════════════════ MODALES DEVOLUCIÓN INDIVIDUAL ══ #}
+{% for grupo in activos %}
+  {% if grupo|length == 1 %}
+  {% set p = grupo[0] %}
+  <div class="modal fade" id="devolver-{{ p.id }}" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content border-0 shadow">
+        <form action="{{ url_for('mantenimiento.devolver_prestamo', prestamo_id=p.id) }}" method="POST">
+          <div class="modal-header bg-light border-0">
+            <h5 class="modal-title fw-bold">Recibir Herramienta</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+          </div>
+          <div class="modal-body p-4">
+            <p class="mb-3">
+              Recibiendo <strong>{{ p.herramienta.nombre if p.herramienta else '—' }}</strong>
+              de <strong>{{ p.trabajador.nombre }}</strong>.
+            </p>
+            <div class="mb-3">
+              <label class="form-label fw-semibold text-muted">Estado físico al devolver</label>
+              <select name="estado_fisico" class="form-select">
+                <option value="bueno"   {% if p.herramienta and p.herramienta.estado_fisico == 'bueno'   %}selected{% endif %}>Bueno</option>
+                <option value="regular" {% if p.herramienta and p.herramienta.estado_fisico == 'regular' %}selected{% endif %}>Regular</option>
+                <option value="malo"    {% if p.herramienta and p.herramienta.estado_fisico == 'malo'    %}selected{% endif %}>Malo (Dañado)</option>
+              </select>
+            </div>
+          </div>
+          <div class="modal-footer border-0">
+            <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancelar</button>
+            <button type="submit" class="btn btn-success">Confirmar Devolución</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+{% endfor %}
+
+{# ══════════════════════════════════════════ MODALES DEVOLUCIÓN GRUPAL ══ #}
+{% for grupo in activos %}
+  {% if grupo|length > 1 %}
+  {% set rep = grupo[0] %}
+  <div class="modal fade" id="devolver-grupo-{{ rep.sesion_id }}" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+      <div class="modal-content border-0 shadow">
+        <div class="modal-header bg-light border-0">
+          <h5 class="modal-title fw-bold">Recibir herramientas — {{ rep.trabajador.nombre }}</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body p-4">
+          <p class="text-muted mb-3">Selecciona el estado físico de cada herramienta al devolverse.</p>
+          {% for p in grupo %}
+          <form action="{{ url_for('mantenimiento.devolver_prestamo', prestamo_id=p.id) }}" method="POST"
+                class="d-flex align-items-center gap-3 mb-3 p-3 border rounded">
+            <div class="flex-grow-1 fw-semibold">
+              <i class="bi bi-tools me-2 text-muted"></i>{{ p.herramienta.nombre if p.herramienta else '—' }}
+              {% if p.herramienta and p.herramienta.codigo %}
+              <span class="text-muted fw-normal small ms-1">({{ p.herramienta.codigo }})</span>
+              {% endif %}
+            </div>
+            <select name="estado_fisico" class="form-select form-select-sm" style="width:160px">
+              <option value="bueno"   {% if p.herramienta and p.herramienta.estado_fisico == 'bueno'   %}selected{% endif %}>Bueno</option>
+              <option value="regular" {% if p.herramienta and p.herramienta.estado_fisico == 'regular' %}selected{% endif %}>Regular</option>
+              <option value="malo"    {% if p.herramienta and p.herramienta.estado_fisico == 'malo'    %}selected{% endif %}>Malo</option>
+            </select>
+            <button type="submit" class="btn btn-sm btn-outline-success" title="Recibir esta herramienta">
+              <i class="bi bi-arrow-return-left"></i>
+            </button>
+          </form>
+          {% endfor %}
+        </div>
+        <div class="modal-footer border-0">
+          <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cerrar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  {% endif %}
 {% endfor %}
 
 {% endblock %}

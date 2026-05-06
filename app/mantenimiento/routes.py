@@ -524,32 +524,69 @@ def herramienta_form(id=None):
 @mantenimiento_bp.route('/prestamos')
 @solo_admin_o_mantenimiento
 def prestamos():
-    lista = Prestamo.query.order_by(Prestamo.fecha_prestamo.desc()).all()
-    return render_template('mantenimiento/prestamos.html', prestamos=lista)
+    from collections import defaultdict
+
+    todos = Prestamo.query.order_by(Prestamo.fecha_prestamo.desc()).all()
+
+    # Agrupar por sesion_id; los préstamos sin sesion_id usan su propio id como clave
+    grupos_activos   = defaultdict(list)
+    grupos_historial = defaultdict(list)
+
+    for p in todos:
+        clave = p.sesion_id if p.sesion_id else -p.id
+        if p.estado == 'prestado':
+            grupos_activos[clave].append(p)
+        else:
+            grupos_historial[clave].append(p)
+
+    # Ordenar cada grupo por fecha desc (primer elemento marca la fecha del grupo)
+    activos   = sorted(grupos_activos.values(),   key=lambda g: g[0].fecha_prestamo, reverse=True)
+    historial = sorted(grupos_historial.values(), key=lambda g: g[0].fecha_prestamo, reverse=True)
+
+    return render_template('mantenimiento/prestamos.html',
+                           activos=activos, historial=historial)
 
 @mantenimiento_bp.route('/prestamo/nuevo', methods=['GET', 'POST'])
 @solo_admin_o_mantenimiento
 def prestamo_form():
     if request.method == 'POST':
-        id_herramienta = int(request.form['id_herramienta'])
-        id_trabajador  = int(request.form['id_trabajador'])
-        notas          = request.form.get('notas', '')
+        ids_herramientas = request.form.getlist('id_herramienta')
+        id_trabajador    = request.form.get('id_trabajador', type=int)
+        notas            = request.form.get('notas', '').strip()
 
-        herramienta = Herramienta.query.get_or_404(id_herramienta)
-        if not herramienta.disponible:
-            flash(f'La herramienta ya está prestada.', 'danger')
+        if not ids_herramientas or not id_trabajador:
+            flash('Selecciona al menos una herramienta y un trabajador.', 'danger')
             return redirect(url_for('mantenimiento.prestamo_form'))
 
-        prestamo = Prestamo(
-            id_herramienta    = id_herramienta,
-            id_trabajador     = id_trabajador,
-            id_usuario_presta = current_user.id,
-            notas             = notas
-        )
-        herramienta.disponible = False
-        db.session.add(prestamo)
+        # Generar sesion_id único para agrupar las herramientas de este préstamo
+        from sqlalchemy import func
+        max_sesion = db.session.query(func.max(Prestamo.sesion_id)).scalar() or 0
+        nueva_sesion = max_sesion + 1
+        fecha_ahora = datetime.utcnow()
+        errores = []
+
+        for id_h in ids_herramientas:
+            if not id_h:
+                continue
+            herramienta = Herramienta.query.get(int(id_h))
+            if not herramienta or not herramienta.disponible:
+                errores.append(f'"{herramienta.nombre if herramienta else id_h}" no disponible.')
+                continue
+            p = Prestamo(
+                id_herramienta    = herramienta.id,
+                id_trabajador     = id_trabajador,
+                id_usuario_presta = current_user.id,
+                notas             = notas,
+                sesion_id         = nueva_sesion,
+                fecha_prestamo    = fecha_ahora,
+            )
+            herramienta.disponible = False
+            db.session.add(p)
+
         db.session.commit()
-        flash('Préstamo registrado exitosamente.', 'success')
+        if errores:
+            flash('Algunas herramientas no estaban disponibles: ' + ' / '.join(errores), 'warning')
+        flash('Préstamo registrado.', 'success')
         return redirect(url_for('mantenimiento.prestamos'))
 
     herramientas = Herramienta.query.filter_by(disponible=True, activo=True).order_by(Herramienta.nombre).all()
