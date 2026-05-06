@@ -521,30 +521,31 @@ def herramienta_form(id=None):
 # PRÉSTAMOS DE HERRAMIENTAS
 # ═══════════════════════════════════════════════════════════════════════════════
 
+def _agrupar_prestamos(queryset):
+    from collections import defaultdict
+    grupos = defaultdict(list)
+    for p in queryset:
+        clave = p.sesion_id if p.sesion_id else -p.id
+        grupos[clave].append(p)
+    return sorted(grupos.values(), key=lambda g: g[0].fecha_prestamo, reverse=True)
+
+
 @mantenimiento_bp.route('/prestamos')
 @solo_admin_o_mantenimiento
 def prestamos():
-    from collections import defaultdict
+    activos = _agrupar_prestamos(
+        Prestamo.query.filter_by(estado='prestado').order_by(Prestamo.fecha_prestamo.desc()).all()
+    )
+    return render_template('mantenimiento/prestamos.html', activos=activos)
 
-    todos = Prestamo.query.order_by(Prestamo.fecha_prestamo.desc()).all()
 
-    # Agrupar por sesion_id; los préstamos sin sesion_id usan su propio id como clave
-    grupos_activos   = defaultdict(list)
-    grupos_historial = defaultdict(list)
-
-    for p in todos:
-        clave = p.sesion_id if p.sesion_id else -p.id
-        if p.estado == 'prestado':
-            grupos_activos[clave].append(p)
-        else:
-            grupos_historial[clave].append(p)
-
-    # Ordenar cada grupo por fecha desc (primer elemento marca la fecha del grupo)
-    activos   = sorted(grupos_activos.values(),   key=lambda g: g[0].fecha_prestamo, reverse=True)
-    historial = sorted(grupos_historial.values(), key=lambda g: g[0].fecha_prestamo, reverse=True)
-
-    return render_template('mantenimiento/prestamos.html',
-                           activos=activos, historial=historial)
+@mantenimiento_bp.route('/prestamos/historial')
+@solo_admin_o_mantenimiento
+def prestamos_historial():
+    historial = _agrupar_prestamos(
+        Prestamo.query.filter_by(estado='devuelto').order_by(Prestamo.fecha_prestamo.desc()).all()
+    )
+    return render_template('mantenimiento/prestamos_historial.html', historial=historial)
 
 @mantenimiento_bp.route('/prestamo/nuevo', methods=['GET', 'POST'])
 @solo_admin_o_mantenimiento
