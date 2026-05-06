@@ -45,7 +45,7 @@
             </td>
             <td class="text-center">
               {% if p.estado == 'prestado' %}
-                <span class="badge bg-warning bg-opacity-15 text-warning border border-warning border-opacity-25 rounded-pill px-3 py-2 fs-6">
+                <span class="badge bg-warning text-dark border border-warning border-opacity-50 rounded-pill px-3 py-2 fs-6">
                   <i class="bi bi-clock-history me-1"></i>En uso
                 </span>
               {% else %}
@@ -57,38 +57,11 @@
             </td>
             <td class="pe-4 text-end">
               {% if p.estado == 'prestado' %}
-              <button type="button" class="btn btn-sm btn-outline-success" data-bs-toggle="modal" data-bs-target="#devolverModal{{ p.id }}">
+              <button type="button" class="btn btn-sm btn-outline-success"
+                      data-bs-toggle="modal"
+                      data-bs-target="#devolver-{{ p.id }}">
                 <i class="bi bi-arrow-return-left me-1"></i>Recibir
               </button>
-
-              <!-- Modal Devolución -->
-              <div class="modal fade text-start" id="devolverModal{{ p.id }}" tabindex="-1">
-                <div class="modal-dialog modal-dialog-centered">
-                  <div class="modal-content border-0 shadow">
-                    <form action="{{ url_for('mantenimiento.devolver_prestamo', prestamo_id=p.id) }}" method="POST">
-                      <div class="modal-header bg-light border-0">
-                        <h5 class="modal-title fw-bold">Recibir Herramienta</h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                      </div>
-                      <div class="modal-body p-4">
-                        <p>Recibiendo <strong>{{ p.herramienta.nombre }}</strong> de <strong>{{ p.trabajador.nombre }}</strong>.</p>
-                        <div class="mb-3">
-                          <label class="form-label fw-semibold text-muted">¿En qué estado se devuelve?</label>
-                          <select name="estado_fisico" class="form-select">
-                            <option value="bueno" {% if p.herramienta and p.herramienta.estado_fisico == 'bueno' %}selected{% endif %}>Bueno</option>
-                            <option value="regular" {% if p.herramienta and p.herramienta.estado_fisico == 'regular' %}selected{% endif %}>Regular</option>
-                            <option value="malo" {% if p.herramienta and p.herramienta.estado_fisico == 'malo' %}selected{% endif %}>Malo (Dañado)</option>
-                          </select>
-                        </div>
-                      </div>
-                      <div class="modal-footer border-0">
-                        <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancelar</button>
-                        <button type="submit" class="btn btn-success">Confirmar Devolución</button>
-                      </div>
-                    </form>
-                  </div>
-                </div>
-              </div>
               {% else %}
                 <span class="text-muted">—</span>
               {% endif %}
@@ -107,4 +80,42 @@
     </div>
   </div>
 </div>
+
+{# ── Modales fuera de la tabla para evitar HTML inválido ───────────────── #}
+{% for p in prestamos %}
+{% if p.estado == 'prestado' %}
+<div class="modal fade" id="devolver-{{ p.id }}" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content border-0 shadow">
+      <form action="{{ url_for('mantenimiento.devolver_prestamo', prestamo_id=p.id) }}" method="POST">
+        <div class="modal-header bg-light border-0">
+          <h5 class="modal-title fw-bold">Recibir Herramienta</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body p-4">
+          <p class="mb-3">
+            Registrando devolución de
+            <strong>{{ p.herramienta.nombre if p.herramienta else '—' }}</strong>
+            de parte de <strong>{{ p.trabajador.nombre }}</strong>.
+          </p>
+          <div class="mb-3">
+            <label class="form-label fw-semibold text-muted">Estado físico al devolver</label>
+            <select name="estado_fisico" class="form-select">
+              <option value="bueno"   {% if p.herramienta and p.herramienta.estado_fisico == 'bueno'   %}selected{% endif %}>Bueno</option>
+              <option value="regular" {% if p.herramienta and p.herramienta.estado_fisico == 'regular' %}selected{% endif %}>Regular</option>
+              <option value="malo"    {% if p.herramienta and p.herramienta.estado_fisico == 'malo'    %}selected{% endif %}>Malo (Dañado)</option>
+            </select>
+          </div>
+        </div>
+        <div class="modal-footer border-0">
+          <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancelar</button>
+          <button type="submit" class="btn btn-success">Confirmar Devolución</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endif %}
+{% endfor %}
+
 {% endblock %}
