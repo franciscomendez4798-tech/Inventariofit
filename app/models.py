@@ -115,19 +115,42 @@ class Proveedor(db.Model):
     cotizaciones = db.relationship('Cotizacion',  back_populates='proveedor')
 
 
+# Junction table for Trabajador ↔ Area (each area belongs to at most one worker)
+trabajador_areas = db.Table(
+    'Trabajador_Areas',
+    db.Column('id_trabajador', db.Integer, db.ForeignKey('Trabajadores.id', ondelete='CASCADE'), nullable=False),
+    db.Column('id_area',       db.Integer, db.ForeignKey('Areas.id',        ondelete='CASCADE'), primary_key=True),
+)
+
+
+class Area(db.Model):
+    __tablename__ = 'Areas'
+
+    id     = db.Column(db.Integer, primary_key=True)
+    nombre = db.Column(db.String(200), nullable=False, unique=True)
+
+
 class Trabajador(db.Model):
     __tablename__ = 'Trabajadores'
 
-    id = db.Column(db.Integer, primary_key=True)
-    nombre = db.Column(db.String(150), nullable=False)
-    cargo = db.Column(db.String(100), nullable=False)
-    area = db.Column(db.String(100))  # área o zona de trabajo (editable, aparece en requisiciones)
-    activo = db.Column(db.Boolean, default=True)
+    id        = db.Column(db.Integer, primary_key=True)
+    nombre    = db.Column(db.String(150), nullable=False)
+    cargo     = db.Column(db.String(100), nullable=False)
+    area      = db.Column(db.String(100))  # legacy — kept for backward compat
+    turno     = db.Column(db.String(20), default='matutino')
+    activo    = db.Column(db.Boolean, default=True)
     creado_en = db.Column(db.DateTime, default=datetime.utcnow)
+
+    areas = db.relationship('Area', secondary='Trabajador_Areas', lazy='subquery')
 
     prestamos       = db.relationship('Prestamo',      back_populates='trabajador')
     pedidos_equipo  = db.relationship('PedidoEquipo',  back_populates='trabajador',
                                       order_by='PedidoEquipo.fecha_pedido.desc()')
+
+    @property
+    def areas_str(self):
+        """Comma-separated area names for xlsx formats."""
+        return ', '.join(a.nombre for a in self.areas) if self.areas else (self.area or '')
 
 
 class Herramienta(db.Model):

@@ -4,7 +4,7 @@ from functools import wraps
 from flask import Blueprint, render_template, redirect, url_for, flash, request, abort, jsonify
 from flask_login import login_required, current_user
 from sqlalchemy import desc
-from ..models import (db, Trabajador, Prestamo, PedidoEquipo,
+from ..models import (db, Trabajador, Area, Prestamo, PedidoEquipo,
                        StockMantenimiento, MovimientoStockMant, Material, MovimientoInventario,
                        Herramienta, OrdenServicio, FirmaTrabajador, FirmaUsuario,
                        DispositivoAV, PrestamoAV)
@@ -372,17 +372,48 @@ def personal():
 @solo_admin_o_mantenimiento
 def personal_form(trab_id=None):
     trabajador = Trabajador.query.get_or_404(trab_id) if trab_id else Trabajador()
+
+    # IDs de áreas ya asignadas a OTROS trabajadores (no disponibles)
+    from sqlalchemy import text as sa_text
+    if trab_id:
+        ocupadas_rows = db.session.execute(
+            sa_text('SELECT id_area FROM "Trabajador_Areas" WHERE id_trabajador != :tid'),
+            {'tid': trab_id}
+        ).fetchall()
+    else:
+        ocupadas_rows = db.session.execute(
+            sa_text('SELECT id_area FROM "Trabajador_Areas"')
+        ).fetchall()
+    ocupadas_ids = {r[0] for r in ocupadas_rows}
+
+    todas_areas = Area.query.order_by(Area.nombre).all()
+
     if request.method == 'POST':
         trabajador.nombre = request.form['nombre'].strip()
         trabajador.cargo  = request.form['cargo'].strip()
-        trabajador.area   = request.form.get('area', '').strip() or None
+        trabajador.turno  = request.form.get('turno', 'matutino')
         trabajador.activo = 'activo' in request.form
+
+        # Áreas seleccionadas como tags
+        area_ids = [int(x) for x in request.form.getlist('area_ids') if x.isdigit()]
+        nuevas_areas = Area.query.filter(Area.id.in_(area_ids)).all() if area_ids else []
+        trabajador.areas = nuevas_areas
+        # Mantener legacy area string para formatos
+        trabajador.area = ', '.join(a.nombre for a in nuevas_areas) or None
+
         if not trab_id:
             db.session.add(trabajador)
         db.session.commit()
         flash(f'Trabajador "{trabajador.nombre}" guardado.', 'success')
         return redirect(url_for('mantenimiento.personal'))
-    return render_template('mantenimiento/personal_form.html', trabajador=trabajador)
+
+    return render_template(
+        'mantenimiento/personal_form.html',
+        trabajador=trabajador,
+        todas_areas=todas_areas,
+        ocupadas_ids=ocupadas_ids,
+        areas_actuales={a.id for a in trabajador.areas},
+    )
 
 def _items_consumos_trabajador(trab_id):
     """Retorna lista de items agregados por material de los consumos del trabajador."""
@@ -409,7 +440,7 @@ def formato_pedido_trabajador(trab_id):
     from ..utils.formatos import generar_xlsx_pedido_trabajador
     trabajador = Trabajador.query.get_or_404(trab_id)
     items = _items_consumos_trabajador(trab_id)
-    buffer = generar_xlsx_pedido_trabajador(trabajador.nombre, items=items, area=trabajador.area)
+    buffer = generar_xlsx_pedido_trabajador(trabajador.nombre, items=items, area=trabajador.areas_str)
     return send_file(
         buffer,
         as_attachment=True,
@@ -426,7 +457,7 @@ def formato_salida_trabajador(trab_id):
     from ..utils.formatos import generar_xlsx_salida_trabajador
     trabajador = Trabajador.query.get_or_404(trab_id)
     items = _items_consumos_trabajador(trab_id)
-    buffer = generar_xlsx_salida_trabajador(trabajador.nombre, items=items, area=trabajador.area)
+    buffer = generar_xlsx_salida_trabajador(trabajador.nombre, items=items, area=trabajador.areas_str)
     return send_file(
         buffer,
         as_attachment=True,
@@ -443,7 +474,7 @@ def informe_general_trabajador(trab_id):
     from ..utils.formatos import generar_xlsx_informe_general
     trabajador = Trabajador.query.get_or_404(trab_id)
     items = _items_consumos_trabajador(trab_id)
-    buffer = generar_xlsx_informe_general(trabajador.nombre, area=trabajador.area, items=items)
+    buffer = generar_xlsx_informe_general(trabajador.nombre, area=trabajador.areas_str, items=items)
     nombre_safe = trabajador.nombre.replace(' ', '_')
     return send_file(
         buffer,

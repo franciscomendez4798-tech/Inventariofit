@@ -1,35 +1,271 @@
 {% extends 'base.html' %}
 {% block title %}{{ 'Editar' if trabajador.id else 'Nuevo' }} Trabajador{% endblock %}
 {% block breadcrumb %}
-  <a href="{{ url_for('mantenimiento.personal') }}">Personal</a> / {{ 'Editar' if trabajador.id else 'Nuevo' }}
+  <a href="{{ url_for('mantenimiento.personal') }}" class="text-decoration-none text-muted">Personal</a>
+  <span class="mx-2 text-muted">&rsaquo;</span>
+  <strong>{{ 'Editar' if trabajador.id else 'Nuevo trabajador' }}</strong>
 {% endblock %}
+
 {% block content %}
-<div class="container-fluid">
-  <div class="card shadow-sm" style="max-width: 600px;">
-    <div class="card-body">
-      <form method="POST">
-        <div class="mb-3">
-          <label class="form-label">Nombre Completo</label>
-          <input type="text" name="nombre" class="form-control" value="{{ trabajador.nombre or '' }}" required>
-        </div>
-        <div class="mb-3">
-          <label class="form-label">Cargo</label>
-          <input type="text" name="cargo" class="form-control" value="{{ trabajador.cargo or '' }}" placeholder="Intendencia, Técnico, etc." required>
-        </div>
-        <div class="mb-3">
-          <label class="form-label">Área de trabajo
-            <small class="text-muted fw-normal">(aparece en formatos de requisición)</small>
-          </label>
-          <input type="text" name="area" class="form-control" value="{{ trabajador.area or '' }}"
-                 placeholder="Ej. Edificio A, Planta baja, Zona norte…">
-        </div>
-        <div class="mb-3 form-check">
-          <input type="checkbox" name="activo" class="form-check-input" id="activo" {% if trabajador.activo or not trabajador.id %}checked{% endif %}>
-          <label class="form-check-label" for="activo">Activo</label>
-        </div>
-        <button type="submit" class="btn btn-primary">Guardar Trabajador</button>
-      </form>
-    </div>
+<div class="animate-fade-in" style="max-width:780px">
+
+  <div class="maintenance-header mb-4">
+    <h2 class="h3 fw-bold text-dark mb-1">
+      {{ 'Editar trabajador' if trabajador.id else 'Nuevo trabajador' }}
+    </h2>
+    <p class="text-muted mb-0">Datos del técnico o intendente de mantenimiento.</p>
   </div>
+
+  <form method="POST" id="form-trabajador">
+
+    {# ── Datos básicos ─────────────────────────────────────────────────────── #}
+    <div class="premium-card mb-4">
+      <div class="card-body p-4">
+        <h6 class="fw-semibold text-muted text-uppercase mb-3" style="font-size:.75rem;letter-spacing:.6px">
+          <i class="bi bi-person me-2"></i>Datos personales
+        </h6>
+
+        <div class="row g-3">
+          <div class="col-12">
+            <label class="form-label fw-semibold">Nombre completo <span class="text-danger">*</span></label>
+            <input type="text" name="nombre" class="form-control"
+                   value="{{ trabajador.nombre or '' }}"
+                   placeholder="Apellidos y nombre" required>
+          </div>
+
+          <div class="col-md-6">
+            <label class="form-label fw-semibold">Cargo <span class="text-danger">*</span></label>
+            <input type="text" name="cargo" class="form-control"
+                   value="{{ trabajador.cargo or '' }}"
+                   placeholder="Intendente, Técnico, Jardinero…" required>
+          </div>
+
+          <div class="col-md-6">
+            <label class="form-label fw-semibold">Turno <span class="text-danger">*</span></label>
+            <select name="turno" class="form-select" required>
+              <option value="matutino"  {% if (trabajador.turno or 'matutino') == 'matutino'  %}selected{% endif %}>
+                🌅 Matutino
+              </option>
+              <option value="vespertino" {% if trabajador.turno == 'vespertino' %}selected{% endif %}>
+                🌆 Vespertino
+              </option>
+            </select>
+          </div>
+
+          <div class="col-12">
+            <div class="form-check">
+              <input type="checkbox" name="activo" class="form-check-input" id="chk-activo"
+                     {% if trabajador.activo or not trabajador.id %}checked{% endif %}>
+              <label class="form-check-label" for="chk-activo">Trabajador activo</label>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    {# ── Áreas como etiquetas ──────────────────────────────────────────────── #}
+    <div class="premium-card mb-4">
+      <div class="card-body p-4">
+        <h6 class="fw-semibold text-muted text-uppercase mb-1" style="font-size:.75rem;letter-spacing:.6px">
+          <i class="bi bi-geo-alt me-2"></i>Áreas asignadas
+        </h6>
+        <p class="text-muted small mb-3">
+          Haz clic en un área para asignarla. Las áreas <span class="text-muted fst-italic">en gris</span>
+          ya están asignadas a otro trabajador.
+          <strong class="text-primary">Sin límite</strong> de áreas por trabajador.
+        </p>
+
+        {# Buscador de áreas #}
+        <div class="input-group mb-3" style="max-width:340px">
+          <span class="input-group-text bg-transparent"><i class="bi bi-search text-muted"></i></span>
+          <input type="text" id="buscar-area" class="form-control border-start-0"
+                 placeholder="Filtrar áreas…" autocomplete="off">
+        </div>
+
+        {# Chips de áreas seleccionadas (arriba) #}
+        <div id="seleccionadas-wrap" class="mb-3 d-flex flex-wrap gap-2 min-height-tag">
+          <span id="placeholder-vacio" class="text-muted small fst-italic py-1
+            {% if areas_actuales %}d-none{% endif %}">
+            Ninguna área seleccionada
+          </span>
+        </div>
+
+        <hr class="my-3">
+
+        {# Catálogo de áreas disponibles #}
+        <div id="catalogo-areas" class="d-flex flex-wrap gap-2">
+          {% for area in todas_areas %}
+          {% set ocupada = area.id in ocupadas_ids %}
+          {% set seleccionada = area.id in areas_actuales %}
+          <button type="button"
+                  class="btn btn-sm area-tag
+                    {% if seleccionada %}area-tag-on{% elif ocupada %}area-tag-ocupada{% else %}area-tag-off{% endif %}"
+                  data-id="{{ area.id }}"
+                  data-nombre="{{ area.nombre }}"
+                  data-ocupada="{{ 'true' if ocupada else 'false' }}"
+                  {% if ocupada and not seleccionada %}disabled title="Asignada a otro trabajador"{% endif %}>
+            {{ area.nombre }}
+          </button>
+          {% endfor %}
+        </div>
+
+        {# Inputs ocultos para los IDs seleccionados #}
+        <div id="hidden-areas"></div>
+      </div>
+    </div>
+
+    <div class="d-flex gap-2">
+      <button type="submit" class="btn btn-primary px-4">
+        <i class="bi bi-check-lg me-2"></i>Guardar trabajador
+      </button>
+      <a href="{{ url_for('mantenimiento.personal') }}" class="btn btn-outline-secondary px-4">
+        Cancelar
+      </a>
+    </div>
+
+  </form>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<style>
+.area-tag {
+  border-radius: 2rem;
+  font-size: .8rem;
+  padding: .3rem .85rem;
+  transition: all .15s;
+  user-select: none;
+}
+.area-tag-off {
+  background: #f1f3f5;
+  border: 1px solid #dee2e6;
+  color: #495057;
+}
+.area-tag-off:hover {
+  background: #e2e8f0;
+  border-color: #adb5bd;
+}
+.area-tag-on {
+  background: #0d6efd;
+  border: 1px solid #0d6efd;
+  color: #fff;
+}
+.area-tag-on:hover {
+  background: #0b5ed7;
+}
+.area-tag-ocupada {
+  background: #f8f9fa;
+  border: 1px dashed #ced4da;
+  color: #adb5bd;
+  cursor: not-allowed;
+}
+.chip-seleccionada {
+  display: inline-flex;
+  align-items: center;
+  gap: .35rem;
+  background: #0d6efd;
+  color: #fff;
+  border-radius: 2rem;
+  padding: .3rem .85rem;
+  font-size: .8rem;
+  font-weight: 500;
+}
+.chip-seleccionada button {
+  background: none;
+  border: none;
+  color: rgba(255,255,255,.8);
+  padding: 0;
+  line-height: 1;
+  font-size: 1rem;
+  cursor: pointer;
+}
+.chip-seleccionada button:hover { color: #fff; }
+.min-height-tag { min-height: 2.5rem; }
+</style>
+
+<script>
+(function () {
+  // Estado inicial desde Jinja
+  const seleccionadas = new Map(); // id → nombre
+  {% for area in todas_areas %}
+  {% if area.id in areas_actuales %}
+  seleccionadas.set({{ area.id }}, {{ area.nombre | tojson }});
+  {% endif %}
+  {% endfor %}
+
+  const catalogo    = document.getElementById('catalogo-areas');
+  const wrap        = document.getElementById('seleccionadas-wrap');
+  const hiddenWrap  = document.getElementById('hidden-areas');
+  const placeholder = document.getElementById('placeholder-vacio');
+  const buscar      = document.getElementById('buscar-area');
+
+  function renderChips() {
+    // Limpiar chips y hidden inputs
+    wrap.querySelectorAll('.chip-seleccionada').forEach(el => el.remove());
+    hiddenWrap.innerHTML = '';
+
+    seleccionadas.forEach((nombre, id) => {
+      // Chip visible
+      const chip = document.createElement('span');
+      chip.className = 'chip-seleccionada';
+      chip.dataset.id = id;
+      chip.innerHTML = `${nombre}<button type="button" aria-label="Quitar">×</button>`;
+      chip.querySelector('button').addEventListener('click', () => deseleccionar(id));
+      wrap.appendChild(chip);
+
+      // Hidden input
+      const inp = document.createElement('input');
+      inp.type  = 'hidden';
+      inp.name  = 'area_ids';
+      inp.value = id;
+      hiddenWrap.appendChild(inp);
+    });
+
+    placeholder.classList.toggle('d-none', seleccionadas.size > 0);
+  }
+
+  function seleccionar(id, nombre, btn) {
+    seleccionadas.set(id, nombre);
+    btn.classList.remove('area-tag-off');
+    btn.classList.add('area-tag-on');
+    renderChips();
+  }
+
+  function deseleccionar(id) {
+    seleccionadas.delete(id);
+    const btn = catalogo.querySelector(`.area-tag[data-id="${id}"]`);
+    if (btn) {
+      btn.classList.remove('area-tag-on');
+      btn.classList.add('area-tag-off');
+    }
+    renderChips();
+  }
+
+  // Clicks en botones del catálogo
+  catalogo.addEventListener('click', function (e) {
+    const btn = e.target.closest('.area-tag');
+    if (!btn || btn.dataset.ocupada === 'true' && !btn.classList.contains('area-tag-on')) return;
+    const id     = parseInt(btn.dataset.id);
+    const nombre = btn.dataset.nombre;
+
+    if (seleccionadas.has(id)) {
+      deseleccionar(id);
+    } else {
+      seleccionar(id, nombre, btn);
+    }
+  });
+
+  // Filtro de búsqueda
+  buscar.addEventListener('input', function () {
+    const q = this.value.toLowerCase().trim();
+    catalogo.querySelectorAll('.area-tag').forEach(btn => {
+      const match = btn.dataset.nombre.toLowerCase().includes(q);
+      btn.style.display = match ? '' : 'none';
+    });
+  });
+
+  // Render inicial
+  renderChips();
+})();
+</script>
 {% endblock %}
