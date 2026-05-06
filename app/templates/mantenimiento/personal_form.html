@@ -42,10 +42,19 @@
 
           <div class="col-md-6">
             <label class="form-label fw-semibold">Turno <span class="text-danger">*</span></label>
-            <select name="turno" class="form-select" required>
-              <option value="matutino"  {% if (trabajador.turno or 'matutino') == 'matutino'  %}selected{% endif %}>Matutino</option>
-              <option value="vespertino" {% if trabajador.turno == 'vespertino' %}selected{% endif %}>Vespertino</option>
-            </select>
+            <div class="d-flex gap-2">
+              <input type="radio" class="btn-check" name="turno" id="turno-mat" value="matutino"
+                     {% if (trabajador.turno or 'matutino') == 'matutino' %}checked{% endif %} required>
+              <label class="btn btn-outline-warning flex-fill d-flex align-items-center justify-content-center gap-2" for="turno-mat">
+                <i class="bi bi-brightness-high"></i> Matutino
+              </label>
+
+              <input type="radio" class="btn-check" name="turno" id="turno-ves" value="vespertino"
+                     {% if trabajador.turno == 'vespertino' %}checked{% endif %}>
+              <label class="btn btn-outline-primary flex-fill d-flex align-items-center justify-content-center gap-2" for="turno-ves">
+                <i class="bi bi-moon-stars"></i> Vespertino
+              </label>
+            </div>
           </div>
 
           <div class="col-12">
