@@ -39,7 +39,7 @@
 
         {# Datos de herramientas disponibles para JS #}
         <script id="data-herramientas" type="application/json">
-          [{% for h in herramientas %}{"id":"{{ h.id }}","label":"{{ h.nombre }}{% if h.codigo %} ({{ h.codigo }}){% endif %} — {{ h.estado_fisico|capitalize }}"}{% if not loop.last %},{% endif %}{% endfor %}]
+          [{% for h in herramientas %}{"id":"{{ h.id }}","label":"{{ h.nombre }}{% if h.codigo %} · {{ h.codigo }}{% endif %}","disponibles":{{ h.cantidad_disponible }},"total":{{ h.cantidad_total }}}{% if not loop.last %},{% endif %}{% endfor %}]
         </script>
 
         <div id="lista-herramientas"></div>
@@ -90,7 +90,7 @@
 
   // Mapa id → {label, filaQueLoUsa: null}
   const herramientas = {};
-  datos.forEach(function (h) { herramientas[h.id] = { label: h.label, usadaPor: null }; });
+  datos.forEach(function (h) { herramientas[h.id] = h; });
 
   let filaCount = 0;
 
@@ -108,14 +108,22 @@
     const usadas = seleccionadasActuales();
     selectEl.innerHTML = '<option value="">Seleccione herramienta…</option>';
     datos.forEach(function (h) {
+      // Cuántas unidades ya están elegidas en otras filas para este id
+      const vecesSel = [...lista.querySelectorAll('select.sel-herramienta')]
+                        .filter(s => s !== selectEl && s.value === h.id).length;
+      const restantes = h.disponibles - vecesSel;
+
       const opt = document.createElement('option');
       opt.value = h.id;
-      opt.textContent = h.label;
       if (h.id === valorActual) {
-        opt.selected = true;           // mantiene la selección actual
-      } else if (usadas.has(h.id)) {
-        opt.disabled = true;           // bloquea lo ya elegido en otra fila
+        opt.selected = true;
+        opt.textContent = h.label + (h.total > 1 ? ' — ' + restantes + ' disp.' : '');
+      } else if (restantes <= 0) {
+        opt.disabled = true;
         opt.style.color = '#adb5bd';
+        opt.textContent = h.label + ' — Sin disponibles';
+      } else {
+        opt.textContent = h.label + (h.total > 1 ? ' — ' + restantes + ' disp.' : '');
       }
       selectEl.appendChild(opt);
     });

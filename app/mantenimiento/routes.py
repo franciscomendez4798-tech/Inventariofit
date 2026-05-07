@@ -503,13 +503,31 @@ def herramientas():
 def herramienta_form(id=None):
     herramienta = Herramienta.query.get_or_404(id) if id else Herramienta()
     if request.method == 'POST':
-        herramienta.nombre = request.form['nombre'].strip()
-        herramienta.marca = request.form.get('marca', '').strip()
-        herramienta.modelo = request.form.get('modelo', '').strip()
-        herramienta.codigo = request.form.get('codigo', '').strip()
-        herramienta.estado_fisico = request.form.get('estado_fisico', 'bueno')
-        
+        herramienta.nombre        = request.form['nombre'].strip()
+        herramienta.marca         = request.form.get('marca', '').strip() or None
+        herramienta.modelo        = request.form.get('modelo', '').strip() or None
+        codigo                    = request.form.get('codigo', '').strip()
+        herramienta.codigo        = codigo or None
+        nuevo_estado              = request.form.get('estado_fisico', 'bueno')
+        cantidad_total            = max(1, int(request.form.get('cantidad_total', 1) or 1))
+        herramienta.cantidad_total = cantidad_total
+
+        # Si se marca como extraviado → cantidad_disponible = 0
+        if nuevo_estado == 'extraviado':
+            herramienta.cantidad_disponible = 0
+        else:
+            # Si venía de extraviado, restaurar disponibles al total
+            if herramienta.estado_fisico == 'extraviado':
+                herramienta.cantidad_disponible = cantidad_total
+            else:
+                # Ajustar si el total disminuyó por debajo de los disponibles
+                herramienta.cantidad_disponible = min(herramienta.cantidad_disponible, cantidad_total)
+
+        herramienta.estado_fisico = nuevo_estado
+        herramienta.sincronizar_disponible()
+
         if not id:
+            herramienta.cantidad_disponible = cantidad_total if nuevo_estado != 'extraviado' else 0
             db.session.add(herramienta)
         db.session.commit()
         flash(f'Herramienta "{herramienta.nombre}" guardada.', 'success')
@@ -570,8 +588,8 @@ def prestamo_form():
             if not id_h:
                 continue
             herramienta = Herramienta.query.get(int(id_h))
-            if not herramienta or not herramienta.disponible:
-                errores.append(f'"{herramienta.nombre if herramienta else id_h}" no disponible.')
+            if not herramienta or herramienta.cantidad_disponible <= 0:
+                errores.append(f'"{herramienta.nombre if herramienta else id_h}" sin unidades disponibles.')
                 continue
             p = Prestamo(
                 id_herramienta    = herramienta.id,
@@ -581,7 +599,8 @@ def prestamo_form():
                 sesion_id         = nueva_sesion,
                 fecha_prestamo    = fecha_ahora,
             )
-            herramienta.disponible = False
+            herramienta.cantidad_disponible -= 1
+            herramienta.sincronizar_disponible()
             db.session.add(p)
 
         db.session.commit()
@@ -590,7 +609,11 @@ def prestamo_form():
         flash('Préstamo registrado.', 'success')
         return redirect(url_for('mantenimiento.prestamos'))
 
-    herramientas = Herramienta.query.filter_by(disponible=True, activo=True).order_by(Herramienta.nombre).all()
+    herramientas = (Herramienta.query
+                    .filter(Herramienta.activo == True,
+                            Herramienta.cantidad_disponible > 0,
+                            Herramienta.estado_fisico != 'extraviado')
+                    .order_by(Herramienta.nombre).all())
     trabajadores = Trabajador.query.filter_by(activo=True).order_by(Trabajador.nombre).all()
     return render_template('mantenimiento/prestamo_form.html',
                            herramientas=herramientas, trabajadores=trabajadores)
@@ -605,10 +628,14 @@ def devolver_prestamo(prestamo_id):
         prestamo.fecha_devolucion = datetime.utcnow()
         prestamo.notas_devolucion = request.form.get('notas_devolucion', '').strip() or None
         if prestamo.herramienta:
-            prestamo.herramienta.disponible = True
+            prestamo.herramienta.cantidad_disponible = min(
+                prestamo.herramienta.cantidad_disponible + 1,
+                prestamo.herramienta.cantidad_total
+            )
             ef = request.form.get('estado_fisico')
             if ef:
                 prestamo.herramienta.estado_fisico = ef
+            prestamo.herramienta.sincronizar_disponible()
         db.session.commit()
         flash('Herramienta devuelta a la bodega.', 'success')
     return redirect(url_for('mantenimiento.prestamos'))
@@ -627,9 +654,13 @@ def devolver_sesion(sesion_id):
         p.notas_devolucion = nota
         ef = request.form.get(f'estado_fisico_{p.id}')
         if p.herramienta:
-            p.herramienta.disponible = True
+            p.herramienta.cantidad_disponible = min(
+                p.herramienta.cantidad_disponible + 1,
+                p.herramienta.cantidad_total
+            )
             if ef:
                 p.herramienta.estado_fisico = ef
+            p.herramienta.sincronizar_disponible()
     db.session.commit()
     n = len(prestamos)
     flash(f'{n} herramienta{"s" if n != 1 else ""} devuelta{"s" if n != 1 else ""} a la bodega.', 'success')

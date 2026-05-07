@@ -1,67 +1,109 @@
 {% extends 'base.html' %}
 {% block title %}{{ 'Editar' if herramienta.id else 'Nueva' }} Herramienta{% endblock %}
 {% block breadcrumb %}
-  <a href="{{ url_for('mantenimiento.panel') }}" class="text-muted text-decoration-none">Mantenimiento</a>
-  <span class="mx-2 text-muted">&rsaquo;</span>
   <a href="{{ url_for('mantenimiento.herramientas') }}" class="text-muted text-decoration-none">Herramientas</a>
   <span class="mx-2 text-muted">&rsaquo;</span>
   <strong>{{ 'Editar' if herramienta.id else 'Nueva' }}</strong>
 {% endblock %}
 
 {% block content %}
-<div class="row justify-content-center">
-  <div class="col-md-8 col-lg-6">
-    <div class="animate-fade-in">
-      <h1 class="page-title-gradient">{{ 'Editar Herramienta' if herramienta.id else 'Nueva Herramienta' }}</h1>
-      <p class="page-subtitle mb-4">Ingresa los datos para registrar la herramienta en la bodega.</p>
-    </div>
+<div style="max-width:640px">
+  <div class="animate-fade-in mb-4">
+    <h1 class="page-title-gradient">{{ 'Editar Herramienta' if herramienta.id else 'Nueva Herramienta' }}</h1>
+    <p class="page-subtitle">Datos del equipo o herramienta registrado en bodega.</p>
+  </div>
 
-    <div class="premium-card animate-fade-in delay-1">
+  <form method="POST">
+
+    {# ── Identificación ────────────────────────────────────────────────── #}
+    <div class="premium-card mb-4">
       <div class="card-body p-4">
-        <form method="POST">
-          <div class="mb-4">
-            <label class="form-label fw-bold text-dark">Nombre de la Herramienta <span class="text-danger">*</span></label>
-            <input type="text" name="nombre" class="form-control form-control-lg bg-light"
-                   value="{{ herramienta.nombre or '' }}" required autofocus
-                   placeholder="Ej: Taladro Percutor, Juego de Llaves, etc.">
+        <h6 class="fw-semibold text-muted text-uppercase mb-3" style="font-size:.75rem;letter-spacing:.6px">
+          <i class="bi bi-tools me-2"></i>Identificación
+        </h6>
+        <div class="mb-3">
+          <label class="form-label fw-semibold">Nombre <span class="text-danger">*</span></label>
+          <input type="text" name="nombre" class="form-control"
+                 value="{{ herramienta.nombre or '' }}" required
+                 placeholder="Ej. Taladro, Juego de Desarmadores…">
+        </div>
+        <div class="row g-3">
+          <div class="col-md-6">
+            <label class="form-label fw-semibold text-muted">Marca</label>
+            <input type="text" name="marca" class="form-control"
+                   value="{{ herramienta.marca or '' }}" placeholder="Truper, DeWalt, Makita…">
           </div>
-
-          <div class="row g-3 mb-4">
-            <div class="col-md-6">
-              <label class="form-label fw-semibold text-muted">Marca</label>
-              <input type="text" name="marca" class="form-control"
-                     value="{{ herramienta.marca or '' }}" placeholder="Ej: DeWalt, Makita">
-            </div>
-            <div class="col-md-6">
-              <label class="form-label fw-semibold text-muted">Modelo</label>
-              <input type="text" name="modelo" class="form-control"
-                     value="{{ herramienta.modelo or '' }}">
-            </div>
+          <div class="col-md-6">
+            <label class="form-label fw-semibold text-muted">Modelo</label>
+            <input type="text" name="modelo" class="form-control"
+                   value="{{ herramienta.modelo or '' }}">
           </div>
-
-          <div class="row g-3 mb-4">
-            <div class="col-md-6">
-              <label class="form-label fw-semibold text-muted">Código Interno / Serie</label>
-              <input type="text" name="codigo" class="form-control"
-                     value="{{ herramienta.codigo or '' }}">
-            </div>
-            <div class="col-md-6">
-              <label class="form-label fw-semibold text-muted">Estado Físico</label>
-              <select name="estado_fisico" class="form-select">
-                <option value="bueno" {% if herramienta.estado_fisico == 'bueno' %}selected{% endif %}>Bueno</option>
-                <option value="regular" {% if herramienta.estado_fisico == 'regular' %}selected{% endif %}>Regular</option>
-                <option value="malo" {% if herramienta.estado_fisico == 'malo' %}selected{% endif %}>Malo</option>
-              </select>
-            </div>
-          </div>
-
-          <div class="d-flex justify-content-end gap-2 mt-5">
-            <a href="{{ url_for('mantenimiento.herramientas') }}" class="btn btn-light px-4">Cancelar</a>
-            <button type="submit" class="btn btn-primary px-5">Guardar Herramienta</button>
-          </div>
-        </form>
+        </div>
+        <div class="mt-3">
+          <label class="form-label fw-semibold text-muted">N.° de Serie / Inventario</label>
+          <input type="text" name="codigo" class="form-control"
+                 value="{{ herramienta.codigo or '' }}"
+                 placeholder="Dejar vacío si aún no tiene número asignado">
+          <div class="form-text">Solo números de serie reales (ej. 2024006633). Dejar vacío si no aplica.</div>
+        </div>
       </div>
     </div>
-  </div>
+
+    {# ── Existencias ───────────────────────────────────────────────────── #}
+    <div class="premium-card mb-4">
+      <div class="card-body p-4">
+        <h6 class="fw-semibold text-muted text-uppercase mb-3" style="font-size:.75rem;letter-spacing:.6px">
+          <i class="bi bi-stack me-2"></i>Existencias y estado
+        </h6>
+        <div class="row g-3 align-items-end">
+          <div class="col-md-4">
+            <label class="form-label fw-semibold">Cantidad total</label>
+            <input type="number" name="cantidad_total" class="form-control"
+                   value="{{ herramienta.cantidad_total or 1 }}" min="1" required>
+            <div class="form-text">Piezas en existencia en bodega.</div>
+          </div>
+          <div class="col-md-4">
+            <label class="form-label fw-semibold text-muted">Disponibles ahora</label>
+            <input type="text" class="form-control bg-light text-muted"
+                   value="{{ herramienta.cantidad_disponible }}" readonly>
+            <div class="form-text">Se actualiza automáticamente con préstamos.</div>
+          </div>
+          <div class="col-md-4">
+            <label class="form-label fw-semibold">Estado físico</label>
+            <select name="estado_fisico" class="form-select" id="sel-estado">
+              <option value="bueno"      {% if herramienta.estado_fisico == 'bueno'      %}selected{% endif %}>Bueno</option>
+              <option value="regular"    {% if herramienta.estado_fisico == 'regular'    %}selected{% endif %}>Regular</option>
+              <option value="malo"       {% if herramienta.estado_fisico == 'malo'       %}selected{% endif %}>Malo</option>
+              <option value="extraviado" {% if herramienta.estado_fisico == 'extraviado' %}selected{% endif %}>Extraviado</option>
+            </select>
+          </div>
+        </div>
+
+        {# Alerta visual cuando se selecciona extraviado #}
+        <div id="alerta-extraviado" class="alert alert-warning border-0 mt-3 mb-0 py-2 small
+            {% if herramienta.estado_fisico != 'extraviado' %}d-none{% endif %}">
+          <i class="bi bi-exclamation-triangle me-2"></i>
+          Al marcar como <strong>Extraviado</strong> la herramienta quedará con 0 disponibles
+          y no podrá registrarse en nuevos préstamos.
+        </div>
+      </div>
+    </div>
+
+    <div class="d-flex gap-2">
+      <button type="submit" class="btn btn-primary px-4">
+        <i class="bi bi-check-lg me-2"></i>Guardar
+      </button>
+      <a href="{{ url_for('mantenimiento.herramientas') }}" class="btn btn-outline-secondary px-4">Cancelar</a>
+    </div>
+
+  </form>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.getElementById('sel-estado').addEventListener('change', function () {
+  document.getElementById('alerta-extraviado').classList.toggle('d-none', this.value !== 'extraviado');
+});
+</script>
 {% endblock %}

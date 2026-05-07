@@ -156,17 +156,23 @@ class Trabajador(db.Model):
 class Herramienta(db.Model):
     __tablename__ = 'Herramientas'
 
-    id = db.Column(db.Integer, primary_key=True)
-    nombre = db.Column(db.String(200), nullable=False)
-    marca = db.Column(db.String(100))
-    modelo = db.Column(db.String(100))
-    codigo = db.Column(db.String(50), unique=True)
-    estado_fisico = db.Column(db.String(50), default='bueno') # bueno, regular, malo
-    disponible = db.Column(db.Boolean, default=True)
-    activo = db.Column(db.Boolean, default=True)
-    creado_en = db.Column(db.DateTime, default=datetime.utcnow)
+    id                   = db.Column(db.Integer, primary_key=True)
+    nombre               = db.Column(db.String(200), nullable=False)
+    marca                = db.Column(db.String(100))
+    modelo               = db.Column(db.String(100))
+    codigo               = db.Column(db.String(50), unique=True, nullable=True)
+    estado_fisico        = db.Column(db.String(50), default='bueno')  # bueno, regular, malo, extraviado
+    disponible           = db.Column(db.Boolean, default=True)
+    activo               = db.Column(db.Boolean, default=True)
+    creado_en            = db.Column(db.DateTime, default=datetime.utcnow)
+    cantidad_total       = db.Column(db.Integer, default=1, nullable=False)
+    cantidad_disponible  = db.Column(db.Integer, default=1, nullable=False)
 
     prestamos = db.relationship('Prestamo', back_populates='herramienta')
+
+    def sincronizar_disponible(self):
+        """Mantiene el flag disponible en sync con cantidad_disponible."""
+        self.disponible = self.cantidad_disponible > 0 and self.estado_fisico != 'extraviado'
 
 class Prestamo(db.Model):
     __tablename__ = 'Prestamos_Herramientas'
