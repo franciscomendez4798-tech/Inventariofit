@@ -14,7 +14,7 @@ Seguridad aplicada:
 """
 import hmac as hmac_lib
 import os
-from datetime import datetime
+from datetime import datetime, timezone
 
 from flask import abort, current_app, make_response, render_template, request
 
@@ -36,8 +36,12 @@ def _orden_por_token(token: str) -> OrdenServicio:
     orden = OrdenServicio.query.filter_by(token_firma=token).first()
     if not orden:
         abort(404)
-    ahora = datetime.utcnow()
-    if not orden.token_firma_expira or ahora > orden.token_firma_expira:
+    ahora  = datetime.now(timezone.utc)
+    expira = orden.token_firma_expira
+    # Normalizar a aware si SQLite devuelve naive
+    if expira is not None and expira.tzinfo is None:
+        expira = expira.replace(tzinfo=timezone.utc)
+    if not expira or ahora > expira:
         abort(410)  # Gone — expirado
     if orden.estado not in ('completada', 'no_realizada'):
         abort(410)  # Orden ya cerrada
@@ -80,7 +84,7 @@ def firma_movil_submit(token):
     orden.firma_solicitante_b64    = firma_solic
     orden.nombre_solicitante_firma = orden.solicitante.nombre_completo
     orden.estado                   = 'entregada'
-    orden.fecha_entrega            = datetime.utcnow()
+    orden.fecha_entrega            = datetime.now(timezone.utc)
 
     # 6. HMAC-SHA256 de integridad (vincula folio + fecha + nombres + hashes de firmas)
     from ..utils.firma_digital import firmar_orden as generar_hmac
