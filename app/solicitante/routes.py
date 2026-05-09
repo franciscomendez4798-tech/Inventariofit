@@ -533,34 +533,6 @@ def descargar_orden_servicio(orden_id):
                      download_name=f'{orden.folio}_OrdenServicio.pdf')
 
 
-@sol_bp.route('/mantenimiento/mi-firma', methods=['GET', 'POST'])
-@login_required
-def mi_firma():
-    """Permite a cualquier usuario guardar su firma digital."""
-    from ..models import FirmaUsuario
-    firma_obj = FirmaUsuario.query.filter_by(id_usuario=current_user.id).first()
-
-    _MAX_FIRMA = 600_000  # ~450 KB en base64
-
-    if request.method == 'POST':
-        firma_b64 = request.form.get('firma_b64', '').strip()
-        if not firma_b64 or len(firma_b64) < 100:
-            flash('Firma inválida. Dibuja tu firma e intenta de nuevo.', 'warning')
-        elif len(firma_b64) > _MAX_FIRMA:
-            flash('La firma excede el tamaño máximo permitido.', 'danger')
-        else:
-            if firma_obj:
-                firma_obj.firma_b64 = firma_b64
-            else:
-                firma_obj = FirmaUsuario(id_usuario=current_user.id, firma_b64=firma_b64)
-                db.session.add(firma_obj)
-            db.session.commit()
-            flash('Firma guardada correctamente.', 'success')
-            return redirect(url_for('solicitante.mi_firma'))
-
-    return render_template('solicitante/mi_firma.html', firma_obj=firma_obj)
-
-
 @sol_bp.route('/requisiciones/pdf')
 @login_required
 @solo_solicitante

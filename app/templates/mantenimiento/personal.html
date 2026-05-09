@@ -86,12 +86,6 @@
                        title="Ver estadísticas y descargar formatos">
                       <i class="bi bi-bar-chart-line"></i> Estadísticas
                     </a>
-                    <a href="{{ url_for('mantenimiento.firma_trabajador', trab_id=t.id) }}"
-                       class="btn btn-sm {% if t.firma_trabajador %}btn-success{% else %}btn-outline-dark{% endif %}"
-                       title="{% if t.firma_trabajador %}Actualizar firma{% else %}Registrar firma{% endif %}">
-                      <i class="bi bi-pen"></i>
-                      {% if t.firma_trabajador %}<i class="bi bi-check-circle-fill ms-1" style="font-size:.7rem;"></i>{% endif %}
-                    </a>
                     <a href="{{ url_for('mantenimiento.personal_form', trab_id=t.id) }}"
                        class="btn btn-sm btn-light border" title="Editar">
                       <i class="bi bi-pencil"></i>

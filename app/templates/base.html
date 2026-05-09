@@ -160,11 +160,6 @@
        class="nav-link {% if request.endpoint == 'mantenimiento.estadisticas_encuestas' %}active{% endif %}">
       <i class="bi bi-bar-chart-line"></i> Estadísticas Encuestas
     </a>
-    <a href="{{ url_for('mantenimiento.mi_firma_mant') }}"
-       class="nav-link {% if request.endpoint == 'mantenimiento.mi_firma_mant' %}active{% endif %}">
-      <i class="bi bi-pen"></i> Mi Firma Digital
-    </a>
-
     <!-- SOLICITAR MATERIAL (como solicitante) -->
     <div class="nav-section-label mt-4">ALMACÉN GENERAL</div>
     <a href="{{ url_for('mantenimiento.solicitar_material') }}"
@@ -199,10 +194,6 @@
     <a href="{{ url_for('solicitante.mis_ordenes_servicio') }}"
        class="nav-link {% if 'ordenes_servicio' in request.endpoint or 'solicitar_mantenimiento' in request.endpoint or 'encuesta' in request.endpoint %}active{% endif %}">
       <i class="bi bi-clipboard2-pulse"></i> Servicios de Mant.
-    </a>
-    <a href="{{ url_for('solicitante.mi_firma') }}"
-       class="nav-link {% if request.endpoint == 'solicitante.mi_firma' %}active{% endif %}">
-      <i class="bi bi-pen"></i> Mi Firma
     </a>
     {% endif %}
   </nav>

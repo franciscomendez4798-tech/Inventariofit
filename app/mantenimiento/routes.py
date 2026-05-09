@@ -1262,20 +1262,13 @@ def generar_token_firma(orden_id):
         flash('La orden debe estar completada para generar el enlace de firma.', 'warning')
         return redirect(url_for('mantenimiento.ordenes_servicio'))
 
-    mi_firma = FirmaUsuario.query.filter_by(id_usuario=current_user.id).first()
-    if not mi_firma:
-        flash('Debes registrar tu firma antes de generar el enlace (sección "Mi Firma").', 'warning')
-        return redirect(url_for('mantenimiento.ordenes_servicio'))
-
-    # Generar token con alta entropía
+    from datetime import timezone as tz
     token  = secrets.token_urlsafe(32)   # 256 bits
-    expira = datetime.utcnow() + timedelta(hours=4)
+    expira = datetime.now(tz.utc) + timedelta(hours=4)
 
-    # Pre-cargar firma del supervisor en este momento (no-repudio)
     orden.token_firma        = token
     orden.token_firma_expira = expira
-    orden.firma_superviso_b64  = mi_firma.firma_b64
-    orden.nombre_superviso     = current_user.nombre_completo
+    orden.nombre_superviso   = current_user.nombre_completo
     db.session.commit()
 
     from flask import url_for as _url_for
@@ -1302,55 +1295,6 @@ def descargar_orden_docx(orden_id):
                      mimetype='application/pdf',
                      download_name=f'{orden.folio}_OrdenServicio.pdf')
 
-
-@mantenimiento_bp.route('/mi-firma', methods=['GET', 'POST'])
-@solo_admin_o_mantenimiento
-def mi_firma_mant():
-    """Guarda la firma digital del usuario de mantenimiento."""
-    firma_obj = FirmaUsuario.query.filter_by(id_usuario=current_user.id).first()
-    _MAX_FIRMA = 600_000
-    if request.method == 'POST':
-        firma_b64 = request.form.get('firma_b64', '').strip()
-        if not firma_b64 or len(firma_b64) < 100:
-            flash('Firma inválida.', 'warning')
-        elif len(firma_b64) > _MAX_FIRMA:
-            flash('La firma excede el tamaño máximo permitido.', 'danger')
-        else:
-            if firma_obj:
-                firma_obj.firma_b64 = firma_b64
-            else:
-                firma_obj = FirmaUsuario(id_usuario=current_user.id, firma_b64=firma_b64)
-                db.session.add(firma_obj)
-            db.session.commit()
-            flash('Firma guardada.', 'success')
-            return redirect(url_for('mantenimiento.mi_firma_mant'))
-    return render_template('mantenimiento/mi_firma.html', firma_obj=firma_obj)
-
-
-@mantenimiento_bp.route('/trabajador/<int:trab_id>/firma', methods=['GET', 'POST'])
-@solo_admin_o_mantenimiento
-def firma_trabajador(trab_id):
-    """Gestiona la firma digital de un trabajador (técnico)."""
-    trabajador = Trabajador.query.get_or_404(trab_id)
-    firma_obj  = FirmaTrabajador.query.filter_by(id_trabajador=trab_id).first()
-    _MAX_FIRMA = 600_000
-    if request.method == 'POST':
-        firma_b64 = request.form.get('firma_b64', '').strip()
-        if not firma_b64 or len(firma_b64) < 100:
-            flash('Firma inválida.', 'warning')
-        elif len(firma_b64) > _MAX_FIRMA:
-            flash('La firma excede el tamaño máximo permitido.', 'danger')
-        else:
-            if firma_obj:
-                firma_obj.firma_b64 = firma_b64
-            else:
-                firma_obj = FirmaTrabajador(id_trabajador=trab_id, firma_b64=firma_b64)
-                db.session.add(firma_obj)
-            db.session.commit()
-            flash(f'Firma de {trabajador.nombre} guardada.', 'success')
-            return redirect(url_for('mantenimiento.personal'))
-    return render_template('mantenimiento/firma_trabajador.html',
-                           trabajador=trabajador, firma_obj=firma_obj)
 
 
 

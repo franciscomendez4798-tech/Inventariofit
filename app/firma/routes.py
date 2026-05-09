@@ -6,14 +6,13 @@ Seguridad aplicada:
   - Token validado tanto en GET como en POST
   - Token incluido en body del form y comparado con compare_digest (CSRF propio)
   - Estado de la orden revalidado en el POST (previene race condition)
-  - Firma pre-cargada del supervisor capturada al generar el token
+  - Las 3 firmas (técnico, supervisor, solicitante) se capturan en el dispositivo
   - Commit atómico: estado 'entregada' + invalidación del token en una sola transacción
   - Rate limit: 10 submit/hora por IP en la ruta pública
   - Cache-Control: no-store en todas las respuestas
   - Tamaño de firma_b64 validado (100 chars mínimo, 600 KB máximo)
 """
 import hmac as hmac_lib
-import os
 from datetime import datetime, timezone
 
 from flask import abort, current_app, make_response, render_template, request
@@ -38,14 +37,17 @@ def _orden_por_token(token: str) -> OrdenServicio:
         abort(404)
     ahora  = datetime.now(timezone.utc)
     expira = orden.token_firma_expira
-    # Normalizar a aware si SQLite devuelve naive
     if expira is not None and expira.tzinfo is None:
         expira = expira.replace(tzinfo=timezone.utc)
     if not expira or ahora > expira:
-        abort(410)  # Gone — expirado
+        abort(410)
     if orden.estado not in ('completada', 'no_realizada'):
-        abort(410)  # Orden ya cerrada
+        abort(410)
     return orden
+
+
+def _validar_firma(valor: str | None) -> bool:
+    return bool(valor) and 100 <= len(valor) <= _MAX_FIRMA
 
 
 @firma_bp.route('/<token>', methods=['GET'])
@@ -58,35 +60,26 @@ def firma_movil(token):
 @firma_bp.route('/<token>', methods=['POST'])
 @limiter.limit('10/hour', error_message='Demasiados intentos. Intenta más tarde.')
 def firma_movil_submit(token):
-    # 1. Revalidar token en URL
     orden = _orden_por_token(token)
 
-    # 2. Token en body == token en URL (protección CSRF propia para ruta pública)
     body_token = request.form.get('token', '')
     if not hmac_lib.compare_digest(body_token, token):
         abort(400)
 
-    # 3. Validar que el supervisor ya tiene firma pre-cargada (se cargó al generar el token)
-    if not orden.firma_superviso_b64:
-        abort(409)
+    firma_realizo   = request.form.get('firma_realizo', '').strip()
+    firma_superviso = request.form.get('firma_superviso', '').strip()
+    firma_solic     = request.form.get('firma_solicitante', '').strip()
 
-    # 4. Validar firmas recibidas
-    firma_realizo = request.form.get('firma_realizo', '').strip()
-    firma_solic   = request.form.get('firma_solicitante', '').strip()
-
-    if not firma_realizo or not (100 <= len(firma_realizo) <= _MAX_FIRMA):
-        abort(400)
-    if not firma_solic or not (100 <= len(firma_solic) <= _MAX_FIRMA):
+    if not all(map(_validar_firma, [firma_realizo, firma_superviso, firma_solic])):
         abort(400)
 
-    # 5. Aplicar firmas
     orden.firma_realizo_b64        = firma_realizo
+    orden.firma_superviso_b64      = firma_superviso
     orden.firma_solicitante_b64    = firma_solic
     orden.nombre_solicitante_firma = orden.solicitante.nombre_completo
     orden.estado                   = 'entregada'
     orden.fecha_entrega            = datetime.now(timezone.utc)
 
-    # 6. HMAC-SHA256 de integridad (vincula folio + fecha + nombres + hashes de firmas)
     from ..utils.firma_digital import firmar_orden as generar_hmac
     secret = current_app.config.get('FIRMA_SECRET_KEY', '')
     canonical, hmac_hex = generar_hmac(orden, secret)
@@ -94,20 +87,6 @@ def firma_movil_submit(token):
     orden.firma_hmac      = hmac_hex
     orden.firma_canonical = canonical
 
-    # 7. Generar PDF
-    try:
-        from ..utils.orden_servicio_pdf import guardar_pdf_orden
-        directorio = os.path.join(
-            os.path.dirname(os.path.dirname(__file__)),
-            'static', 'uploads', 'ordenes_servicio'
-        )
-        ruta_abs = guardar_pdf_orden(orden, directorio)
-        ruta_rel = os.path.relpath(ruta_abs, os.path.dirname(os.path.dirname(__file__)))
-        orden.archivo_docx_path = ruta_rel
-    except Exception:
-        pass  # La orden se cierra igual; el PDF puede regenerarse manualmente
-
-    # 8. Invalidar token — mismo commit que el cambio de estado (atómico)
     orden.token_firma        = None
     orden.token_firma_expira = None
 
