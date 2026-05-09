@@ -1290,20 +1290,15 @@ def generar_token_firma(orden_id):
 @mantenimiento_bp.route('/ordenes-servicio/<int:orden_id>/descargar')
 @solo_admin_o_mantenimiento
 def descargar_orden_docx(orden_id):
-    """Descarga el PDF generado de la orden de servicio."""
-    import os
+    """Genera el PDF de la orden en tiempo real y lo devuelve al cliente."""
     from flask import send_file
     orden = OrdenServicio.query.get_or_404(orden_id)
-    if not orden.archivo_docx_path:
-        flash('Documento no generado aún.', 'warning')
+    if orden.estado != 'entregada':
+        flash('La orden debe estar entregada para descargar el PDF.', 'warning')
         return redirect(url_for('mantenimiento.ordenes_servicio'))
-    ruta = os.path.join(
-        os.path.dirname(os.path.dirname(__file__)), orden.archivo_docx_path
-    )
-    if not os.path.exists(ruta):
-        flash('Archivo no encontrado en disco.', 'danger')
-        return redirect(url_for('mantenimiento.ordenes_servicio'))
-    return send_file(ruta, as_attachment=True,
+    from ..utils.orden_servicio_pdf import generar_pdf_orden
+    buf = generar_pdf_orden(orden)
+    return send_file(buf, as_attachment=True,
                      mimetype='application/pdf',
                      download_name=f'{orden.folio}_OrdenServicio.pdf')
 

@@ -123,7 +123,7 @@
                     <i class="bi bi-qr-code"></i>
                   </button>
                 </form>
-                {% elif o.estado == 'entregada' and o.archivo_docx_path %}
+                {% elif o.estado == 'entregada' %}
                 <a href="{{ url_for('mantenimiento.descargar_orden_docx', orden_id=o.id) }}"
                    class="btn btn-sm btn-outline-danger" title="Descargar PDF">
                   <i class="bi bi-file-earmark-pdf"></i>

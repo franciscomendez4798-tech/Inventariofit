@@ -67,7 +67,7 @@
               </p>
             </div>
             <div class="d-flex gap-2 flex-wrap">
-              {% if orden.estado == 'entregada' and orden.archivo_docx_path %}
+              {% if orden.estado == 'entregada' %}
               <a href="{{ url_for('solicitante.descargar_orden_servicio', orden_id=orden.id) }}"
                  class="btn btn-sm btn-outline-danger">
                 <i class="bi bi-file-earmark-pdf me-1"></i>Descargar PDF

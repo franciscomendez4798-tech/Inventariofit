@@ -523,16 +523,12 @@ def descargar_orden_servicio(orden_id):
     if orden.id_solicitante != current_user.id:
         flash('No tienes acceso a esta orden.', 'danger')
         return redirect(url_for('solicitante.mis_ordenes_servicio'))
-    if orden.estado != 'entregada' or not orden.archivo_docx_path:
+    if orden.estado != 'entregada':
         flash('El documento aún no está disponible.', 'warning')
         return redirect(url_for('solicitante.mis_ordenes_servicio'))
-    ruta = os.path.join(
-        os.path.dirname(os.path.dirname(__file__)), orden.archivo_docx_path
-    )
-    if not os.path.exists(ruta):
-        flash('Archivo no encontrado.', 'danger')
-        return redirect(url_for('solicitante.mis_ordenes_servicio'))
-    return send_file(ruta, as_attachment=True,
+    from ..utils.orden_servicio_pdf import generar_pdf_orden
+    buf = generar_pdf_orden(orden)
+    return send_file(buf, as_attachment=True,
                      mimetype='application/pdf',
                      download_name=f'{orden.folio}_OrdenServicio.pdf')
 
