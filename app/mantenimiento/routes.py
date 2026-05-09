@@ -1147,8 +1147,8 @@ def completar_orden(orden_id):
         orden.notas_mantenimiento   = notas
         orden.estado = 'completada' if realizado else 'no_realizada'
         db.session.commit()
-        flash(f'Orden {orden.folio} registrada como {"completada" if realizado else "no realizada"}.', 'success')
-        return redirect(url_for('mantenimiento.firmar_orden', orden_id=orden.id))
+        flash(f'Orden {orden.folio} registrada como {"completada" if realizado else "no realizada"}. Genera el enlace de firma para el técnico.', 'success')
+        return redirect(url_for('mantenimiento.ordenes_servicio'))
 
     return render_template('mantenimiento/completar_orden.html',
                            orden=orden, trabajadores=trabajadores, now=datetime.utcnow())

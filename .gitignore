@@ -19,6 +19,7 @@ app/static/uploads/
 # Excepciones: plantillas institucionales (deben ir al repo)
 !app/utils/plantilla_pedido.xlsx
 !app/utils/plantilla_salida.xlsx
+!app/utils/template_base.pdf
 
 # macOS
 .DS_Store
@@ -31,3 +32,4 @@ app/static/uploads/
 migration_supabase.sql
 sqlite_data.json
 run_migration.py
+.env.credenciales

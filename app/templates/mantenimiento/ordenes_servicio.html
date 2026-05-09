@@ -110,17 +110,13 @@
                   <i class="bi bi-check2-circle"></i>
                 </a>
                 {% elif o.estado in ('completada','no_realizada') %}
-                <a href="{{ url_for('mantenimiento.firmar_orden', orden_id=o.id) }}"
-                   class="btn btn-sm btn-dark" title="Firmar desde dashboard">
-                  <i class="bi bi-pen"></i>
-                </a>
                 <form method="POST"
                       action="{{ url_for('mantenimiento.generar_token_firma', orden_id=o.id) }}"
                       class="d-inline">
                   <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                   <button type="submit" class="btn btn-sm btn-outline-primary"
-                          title="Firma en campo (genera QR + enlace móvil)">
-                    <i class="bi bi-qr-code"></i>
+                          title="Generar enlace de firma móvil (QR)">
+                    <i class="bi bi-qr-code me-1"></i>Firmar
                   </button>
                 </form>
                 {% elif o.estado == 'entregada' %}
