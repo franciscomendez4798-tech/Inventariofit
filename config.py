@@ -46,6 +46,19 @@ class ProductionConfig(Config):
     DEBUG = False
     SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL')
 
+    @classmethod
+    def validate(cls):
+        _DEV_KEY = 'dev-key-CAMBIAR-en-produccion'
+        if cls.SECRET_KEY == _DEV_KEY:
+            raise RuntimeError(
+                "SECRET_KEY debe estar definida en variables de entorno en producción. "
+                "No se puede arrancar con la clave de desarrollo."
+            )
+        if cls.FIRMA_SECRET_KEY in (_DEV_KEY, cls.SECRET_KEY) and os.environ.get('FIRMA_SECRET_KEY') is None:
+            raise RuntimeError(
+                "FIRMA_SECRET_KEY debe ser una variable de entorno independiente en producción."
+            )
+
 class TestingConfig(Config):
     TESTING          = True
     WTF_CSRF_ENABLED = False   # desactivado en tests para no requerir tokens

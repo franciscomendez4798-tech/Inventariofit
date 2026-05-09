@@ -111,9 +111,18 @@
                 </a>
                 {% elif o.estado in ('completada','no_realizada') %}
                 <a href="{{ url_for('mantenimiento.firmar_orden', orden_id=o.id) }}"
-                   class="btn btn-sm btn-dark" title="Firmar y entregar">
-                  <i class="bi bi-pen me-1"></i>Firmar
+                   class="btn btn-sm btn-dark" title="Firmar desde dashboard">
+                  <i class="bi bi-pen"></i>
                 </a>
+                <form method="POST"
+                      action="{{ url_for('mantenimiento.generar_token_firma', orden_id=o.id) }}"
+                      class="d-inline">
+                  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                  <button type="submit" class="btn btn-sm btn-outline-primary"
+                          title="Firma en campo (genera QR + enlace móvil)">
+                    <i class="bi bi-qr-code"></i>
+                  </button>
+                </form>
                 {% elif o.estado == 'entregada' and o.archivo_docx_path %}
                 <a href="{{ url_for('mantenimiento.descargar_orden_docx', orden_id=o.id) }}"
                    class="btn btn-sm btn-outline-danger" title="Descargar PDF">

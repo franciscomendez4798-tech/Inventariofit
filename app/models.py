@@ -543,6 +543,10 @@ class OrdenServicio(db.Model):
     archivo_docx_path  = db.Column(db.String(500))
     fecha_entrega      = db.Column(db.DateTime)
 
+    # Token de firma en campo (móvil, sin login)
+    token_firma        = db.Column(db.String(64), nullable=True, index=True)
+    token_firma_expira = db.Column(db.DateTime,   nullable=True)
+
     solicitante         = db.relationship('Usuario', foreign_keys=[id_solicitante])
     departamento        = db.relationship('Departamento', foreign_keys=[id_departamento])
     trabajador_realizo  = db.relationship('Trabajador', foreign_keys=[id_trabajador_realizo])

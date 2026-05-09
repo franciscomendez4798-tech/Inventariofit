@@ -1242,6 +1242,51 @@ def firmar_orden(orden_id):
                            firma_solicitante=firma_solicitante)
 
 
+@mantenimiento_bp.route('/ordenes-servicio/<int:orden_id>/generar-token', methods=['POST'])
+@solo_admin_o_mantenimiento
+def generar_token_firma(orden_id):
+    """
+    Genera un token de un solo uso para que el técnico firme la orden desde su celular.
+
+    Seguridad:
+      - Requiere login de mantenimiento (solo_admin_o_mantenimiento)
+      - Captura la firma del supervisor en este momento (no-repudio)
+      - Token: 256 bits, URL-safe, expira en 4 horas
+      - La orden debe estar en estado completada o no_realizada
+    """
+    import secrets
+    from datetime import timedelta
+
+    orden = OrdenServicio.query.get_or_404(orden_id)
+    if orden.estado not in ('completada', 'no_realizada'):
+        flash('La orden debe estar completada para generar el enlace de firma.', 'warning')
+        return redirect(url_for('mantenimiento.ordenes_servicio'))
+
+    mi_firma = FirmaUsuario.query.filter_by(id_usuario=current_user.id).first()
+    if not mi_firma:
+        flash('Debes registrar tu firma antes de generar el enlace (sección "Mi Firma").', 'warning')
+        return redirect(url_for('mantenimiento.ordenes_servicio'))
+
+    # Generar token con alta entropía
+    token  = secrets.token_urlsafe(32)   # 256 bits
+    expira = datetime.utcnow() + timedelta(hours=4)
+
+    # Pre-cargar firma del supervisor en este momento (no-repudio)
+    orden.token_firma        = token
+    orden.token_firma_expira = expira
+    orden.firma_superviso_b64  = mi_firma.firma_b64
+    orden.nombre_superviso     = current_user.nombre_completo
+    db.session.commit()
+
+    from flask import url_for as _url_for
+    url_firma = _url_for('firma.firma_movil', token=token, _external=True)
+
+    return render_template('mantenimiento/token_generado.html',
+                           orden=orden,
+                           url_firma=url_firma,
+                           expira=expira)
+
+
 @mantenimiento_bp.route('/ordenes-servicio/<int:orden_id>/descargar')
 @solo_admin_o_mantenimiento
 def descargar_orden_docx(orden_id):

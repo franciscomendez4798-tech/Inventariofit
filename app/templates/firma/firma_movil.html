@@ -1,0 +1,227 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+  <title>Firma en Campo — {{ orden.folio }}</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+  <style>
+    body { background: #f8f9fa; font-size: 1rem; }
+    .card-firma { border-radius: 1rem; box-shadow: 0 2px 12px rgba(0,0,0,.08); }
+
+    /* Canvas del pad de firma */
+    #pad-canvas {
+      width: 100%;
+      height: 220px;
+      border: 2px dashed #6c757d;
+      border-radius: .75rem;
+      background: #fff;
+      display: block;
+      touch-action: none;   /* evita scroll durante firma */
+    }
+    #pad-canvas.firmado { border-color: #198754; border-style: solid; }
+
+    /* Indicador de pasos */
+    .step-dot {
+      width: 10px; height: 10px;
+      border-radius: 50%;
+      background: #dee2e6;
+      display: inline-block;
+      transition: background .3s;
+    }
+    .step-dot.active { background: #0d6efd; }
+    .step-dot.done   { background: #198754; }
+
+    .btn-lg { font-size: 1.1rem; padding: .75rem 1.5rem; }
+    .info-label { font-size: .78rem; color: #6c757d; text-transform: uppercase; letter-spacing: .05em; }
+  </style>
+</head>
+<body>
+
+<div class="container-fluid px-3 py-4" style="max-width:520px; margin:0 auto;">
+
+  {# ── Cabecera ── #}
+  <div class="text-center mb-3">
+    <div class="info-label mb-1">Orden de Servicio</div>
+    <h4 class="fw-bold font-monospace mb-0">{{ orden.folio }}</h4>
+    <div class="text-muted small mt-1">
+      {{ orden.servicios_texto() or orden.tipo_mantenimiento }}
+      &nbsp;·&nbsp;
+      {{ orden.fecha_solicitud.strftime('%d/%m/%Y') }}
+    </div>
+  </div>
+
+  {# ── Resumen compacto ── #}
+  <div class="card card-firma mb-4">
+    <div class="card-body py-3 px-4">
+      <div class="row g-2">
+        <div class="col-6">
+          <div class="info-label">Realizó</div>
+          <div class="fw-semibold">{{ orden.nombre_realizo or '—' }}</div>
+        </div>
+        <div class="col-6">
+          <div class="info-label">Solicitante</div>
+          <div class="fw-semibold">{{ orden.solicitante.nombre_completo }}</div>
+        </div>
+        <div class="col-12">
+          <div class="info-label">Descripción</div>
+          <div class="small text-secondary">
+            {{ orden.descripcion[:100] }}{% if orden.descripcion|length > 100 %}…{% endif %}
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  {# ── Indicador de pasos ── #}
+  <div class="text-center mb-3">
+    <span class="step-dot active" id="dot-1"></span>
+    <span class="mx-1 text-muted" style="font-size:.7rem;">———</span>
+    <span class="step-dot" id="dot-2"></span>
+  </div>
+
+  {# ── Formulario de firma ── #}
+  <form id="forma-firma" method="POST">
+    <input type="hidden" name="token" value="{{ token }}">
+    <input type="hidden" name="firma_realizo"     id="h-realizo">
+    <input type="hidden" name="firma_solicitante" id="h-solicitante">
+
+    {# ── PASO 1: Firma del técnico ── #}
+    <div id="paso-1">
+      <div class="card card-firma mb-3">
+        <div class="card-body p-4">
+          <div class="d-flex align-items-center mb-3">
+            <span class="badge bg-primary me-2">Paso 1 de 2</span>
+            <span class="fw-semibold">Firma del técnico</span>
+          </div>
+          <p class="text-muted small mb-3">
+            <i class="bi bi-person-check me-1"></i>
+            <strong>{{ orden.nombre_realizo or 'Técnico' }}</strong> — confirma haber realizado el servicio.
+          </p>
+          <canvas id="pad-canvas" id="canvas-realizo"></canvas>
+          <div class="d-flex justify-content-between mt-2">
+            <button type="button" class="btn btn-outline-secondary btn-sm" onclick="limpiarPad()">
+              <i class="bi bi-arrow-counterclockwise me-1"></i>Limpiar
+            </button>
+            <span id="aviso-1" class="text-danger small align-self-center d-none">
+              <i class="bi bi-exclamation-circle me-1"></i>Dibuja tu firma
+            </span>
+          </div>
+        </div>
+      </div>
+      <button type="button" class="btn btn-primary btn-lg w-100" onclick="avanzarPaso2()">
+        Siguiente <i class="bi bi-arrow-right ms-1"></i>
+      </button>
+    </div>
+
+    {# ── PASO 2: Conformidad del solicitante ── #}
+    <div id="paso-2" class="d-none">
+      <div class="card card-firma mb-3">
+        <div class="card-body p-4">
+          <div class="d-flex align-items-center mb-3">
+            <span class="badge bg-success me-2">Paso 2 de 2</span>
+            <span class="fw-semibold">Conformidad del servicio</span>
+          </div>
+          <p class="text-muted small mb-3">
+            <i class="bi bi-person-check-fill me-1"></i>
+            <strong>{{ orden.solicitante.nombre_completo }}</strong> — confirma haber recibido el servicio.
+          </p>
+          <canvas id="pad-canvas-2" style="width:100%;height:220px;border:2px dashed #6c757d;border-radius:.75rem;background:#fff;display:block;touch-action:none;"></canvas>
+          <div class="d-flex justify-content-between mt-2">
+            <button type="button" class="btn btn-outline-secondary btn-sm" onclick="limpiarPad2()">
+              <i class="bi bi-arrow-counterclockwise me-1"></i>Limpiar
+            </button>
+            <span id="aviso-2" class="text-danger small align-self-center d-none">
+              <i class="bi bi-exclamation-circle me-1"></i>Dibuja tu firma
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <button type="button" class="btn btn-outline-secondary mb-3 w-100" onclick="regresarPaso1()">
+        <i class="bi bi-arrow-left me-1"></i>Atrás
+      </button>
+      <button type="submit" class="btn btn-success btn-lg w-100" id="btn-confirmar">
+        <i class="bi bi-check-circle me-1"></i>Confirmar y Cerrar Orden
+      </button>
+    </div>
+
+  </form>
+
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/signature_pad@4.2.0/dist/signature_pad.umd.min.js"></script>
+<script>
+  // ── Inicializar pads ──────────────────────────────────────────────────────
+  const canvas1 = document.getElementById('pad-canvas');
+  const canvas2 = document.getElementById('pad-canvas-2');
+  const pad1 = new SignaturePad(canvas1, { penColor: '#000' });
+  const pad2 = new SignaturePad(canvas2, { penColor: '#000' });
+
+  function resizeCanvas(canvas, pad) {
+    const ratio = Math.max(window.devicePixelRatio || 1, 1);
+    canvas.width  = canvas.offsetWidth  * ratio;
+    canvas.height = canvas.offsetHeight * ratio;
+    canvas.getContext('2d').scale(ratio, ratio);
+    pad.clear();
+  }
+
+  window.addEventListener('resize', () => {
+    resizeCanvas(canvas1, pad1);
+    resizeCanvas(canvas2, pad2);
+  });
+  resizeCanvas(canvas1, pad1);
+  resizeCanvas(canvas2, pad2);
+
+  // ── Navegación entre pasos ────────────────────────────────────────────────
+  function avanzarPaso2() {
+    if (pad1.isEmpty()) {
+      document.getElementById('aviso-1').classList.remove('d-none');
+      return;
+    }
+    document.getElementById('aviso-1').classList.add('d-none');
+    document.getElementById('h-realizo').value = pad1.toDataURL('image/png');
+
+    // Marcar paso 1 como hecho
+    document.getElementById('dot-1').classList.remove('active');
+    document.getElementById('dot-1').classList.add('done');
+    document.getElementById('dot-2').classList.add('active');
+
+    document.getElementById('paso-1').classList.add('d-none');
+    document.getElementById('paso-2').classList.remove('d-none');
+
+    // Ajustar canvas 2 al tamaño visible
+    resizeCanvas(canvas2, pad2);
+  }
+
+  function regresarPaso1() {
+    document.getElementById('dot-2').classList.remove('active');
+    document.getElementById('dot-1').classList.remove('done');
+    document.getElementById('dot-1').classList.add('active');
+
+    document.getElementById('paso-2').classList.add('d-none');
+    document.getElementById('paso-1').classList.remove('d-none');
+  }
+
+  function limpiarPad()  { pad1.clear(); }
+  function limpiarPad2() { pad2.clear(); }
+
+  // ── Validar y enviar ──────────────────────────────────────────────────────
+  document.getElementById('forma-firma').addEventListener('submit', function(e) {
+    if (pad2.isEmpty()) {
+      e.preventDefault();
+      document.getElementById('aviso-2').classList.remove('d-none');
+      return;
+    }
+    document.getElementById('aviso-2').classList.add('d-none');
+    document.getElementById('h-solicitante').value = pad2.toDataURL('image/png');
+
+    // Deshabilitar el botón para prevenir doble envío
+    const btn = document.getElementById('btn-confirmar');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Procesando…';
+  });
+</script>
+</body>
+</html>
