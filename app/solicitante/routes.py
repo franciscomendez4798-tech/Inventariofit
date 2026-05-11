@@ -497,12 +497,16 @@ def encuesta_satisfaccion(orden_id):
         return redirect(url_for('solicitante.mis_ordenes_servicio'))
 
     if request.method == 'POST':
-        orden.enc_experiencia      = request.form.get('experiencia', type=int)
-        orden.enc_profesionalismo  = request.form.get('profesionalismo', type=int)
-        orden.enc_tiempo_respuesta = request.form.get('tiempo_respuesta', type=int)
-        orden.enc_calidad          = request.form.get('calidad', type=int)
-        orden.enc_comunicacion     = request.form.get('comunicacion', type=int)
-        orden.enc_comentarios      = request.form.get('comentarios', '').strip()
+        def _enc(field):
+            v = request.form.get(field, type=int)
+            return max(1, min(5, v)) if v is not None else None
+
+        orden.enc_experiencia      = _enc('experiencia')
+        orden.enc_profesionalismo  = _enc('profesionalismo')
+        orden.enc_tiempo_respuesta = _enc('tiempo_respuesta')
+        orden.enc_calidad          = _enc('calidad')
+        orden.enc_comunicacion     = _enc('comunicacion')
+        orden.enc_comentarios      = request.form.get('comentarios', '')[:2000].strip()
         orden.encuesta_completada  = True
         db.session.commit()
         flash('¡Gracias por tu retroalimentación!', 'success')

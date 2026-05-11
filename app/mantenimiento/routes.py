@@ -9,6 +9,11 @@ from ..models import (db, Trabajador, Area, Prestamo, PedidoEquipo,
                        Herramienta, OrdenServicio, FirmaTrabajador, FirmaUsuario,
                        DispositivoAV, PrestamoAV)
 
+
+def _esc(q: str) -> str:
+    """Escapa caracteres LIKE especiales para evitar inyección de patrones."""
+    return q.replace('\\', '\\\\').replace('%', '\\%').replace('_', '\\_')
+
 mantenimiento_bp = Blueprint('mantenimiento', __name__, template_folder='../templates/mantenimiento')
 
 def solo_admin_o_mantenimiento(f):
@@ -70,7 +75,7 @@ def stock():
 
     query = StockMantenimiento.query.filter_by(activo=True).order_by(StockMantenimiento.nombre)
     if q:
-        query = query.filter(StockMantenimiento.nombre.ilike(f'%{q}%'))
+        query = query.filter(StockMantenimiento.nombre.ilike(f'%{_esc(q)}%', escape='\\'))
     if solo_bajo:
         query = query.filter(StockMantenimiento.cantidad <= StockMantenimiento.cantidad_min)
 
@@ -193,7 +198,7 @@ def stock_bitacora():
         query = query.filter_by(tipo=tipo)
     if q:
         query = query.join(StockMantenimiento).filter(
-            StockMantenimiento.nombre.ilike(f'%{q}%')
+            StockMantenimiento.nombre.ilike(f'%{_esc(q)}%', escape='\\')
         )
     if fecha:
         try:
@@ -228,7 +233,7 @@ def recepciones():
 
     if q:
         query = query.join(StockMantenimiento).filter(
-            StockMantenimiento.nombre.ilike(f'%{q}%')
+            StockMantenimiento.nombre.ilike(f'%{_esc(q)}%', escape='\\')
         )
     if fecha_desde:
         try:
@@ -275,7 +280,7 @@ def consumos():
              .order_by(desc(MovimientoStockMant.fecha)))
     if q:
         query = query.join(StockMantenimiento).filter(
-            StockMantenimiento.nombre.ilike(f'%{q}%')
+            StockMantenimiento.nombre.ilike(f'%{_esc(q)}%', escape='\\')
         )
     if fecha:
         try:
@@ -767,7 +772,7 @@ def pedidos_equipo():
     if q:
         query = (query
                  .join(Trabajador)
-                 .filter(Trabajador.nombre.ilike(f'%{q}%')))
+                 .filter(Trabajador.nombre.ilike(f'%{_esc(q)}%', escape='\\')))
 
     lista = query.all()
     trabajadores = Trabajador.query.filter_by(activo=True).order_by(Trabajador.nombre).all()
@@ -1094,7 +1099,7 @@ def ordenes_servicio():
     if q:
         from ..models import Usuario
         query = query.join(Usuario, OrdenServicio.id_solicitante == Usuario.id).filter(
-            Usuario.nombre_completo.ilike(f'%{q}%')
+            Usuario.nombre_completo.ilike(f'%{_esc(q)}%', escape='\\')
         )
 
     ordenes = query.all()
@@ -1406,7 +1411,7 @@ def audiovisual_historial():
     if estado_f in PrestamoAV.ESTADOS:
         query = query.filter_by(estado=estado_f)
     if q:
-        query = query.filter(PrestamoAV.nombre_alumno.ilike(f'%{q}%'))
+        query = query.filter(PrestamoAV.nombre_alumno.ilike(f'%{_esc(q)}%', escape='\\'))
 
     prestamos = query.all()
     return render_template('mantenimiento/audiovisual_historial.html',

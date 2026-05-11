@@ -33,3 +33,6 @@ migration_supabase.sql
 sqlite_data.json
 run_migration.py
 .env.credenciales
+
+# Scripts con credenciales en texto plano
+deploy_railway.sh

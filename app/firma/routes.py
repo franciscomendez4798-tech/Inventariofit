@@ -47,7 +47,11 @@ def _orden_por_token(token: str) -> OrdenServicio:
 
 
 def _validar_firma(valor: str | None) -> bool:
-    return bool(valor) and 100 <= len(valor) <= _MAX_FIRMA
+    return (
+        bool(valor)
+        and valor.startswith('data:image/png;base64,')
+        and 100 <= len(valor) <= _MAX_FIRMA
+    )
 
 
 @firma_bp.route('/<token>', methods=['GET'])

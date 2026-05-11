@@ -9,6 +9,11 @@ from ..models import (Material, Categoria, Proveedor, Pedido, DetallePedido,
                       MovimientoInventario, Departamento, Usuario,
                       ReservaAuditorio, db)
 
+
+def _esc(q: str) -> str:
+    """Escapa caracteres LIKE especiales para evitar inyección de patrones."""
+    return q.replace('\\', '\\\\').replace('%', '\\%').replace('_', '\\_')
+
 admin_bp = Blueprint('admin', __name__,
                      template_folder='../templates/admin')
 
@@ -873,7 +878,7 @@ def admin_stock_mantenimiento():
 
     query = StockMantenimiento.query.filter_by(activo=True).order_by(StockMantenimiento.nombre)
     if q:
-        query = query.filter(StockMantenimiento.nombre.ilike(f'%{q}%'))
+        query = query.filter(StockMantenimiento.nombre.ilike(f'%{_esc(q)}%', escape='\\'))
     if solo_bajo:
         query = query.filter(StockMantenimiento.cantidad <= StockMantenimiento.cantidad_min)
 
@@ -918,7 +923,7 @@ def ordenes_servicio_admin():
         query = query.filter_by(estado=estado_f)
     if q:
         query = query.join(Usuario, OrdenServicio.id_solicitante == Usuario.id).filter(
-            Usuario.nombre_completo.ilike(f'%{q}%')
+            Usuario.nombre_completo.ilike(f'%{_esc(q)}%', escape='\\')
         )
     ordenes = query.all()
     return render_template('admin/ordenes_servicio.html',
@@ -929,21 +934,16 @@ def ordenes_servicio_admin():
 @admin_bp.route('/ordenes-servicio/<int:orden_id>/descargar')
 @solo_admin
 def descargar_orden_admin(orden_id):
-    """Descarga el .docx de la orden de servicio."""
-    import os
+    """Genera y descarga el PDF de la orden de servicio al vuelo."""
     from flask import send_file
     from ..models import OrdenServicio
+    from ..utils.formatos import generar_pdf_orden
     orden = OrdenServicio.query.get_or_404(orden_id)
-    if not orden.archivo_docx_path:
-        flash('Documento no disponible aún.', 'warning')
+    if orden.estado != 'entregada':
+        flash('El PDF sólo está disponible para órdenes entregadas.', 'warning')
         return redirect(url_for('admin.ordenes_servicio_admin'))
-    ruta = os.path.join(
-        os.path.dirname(os.path.dirname(__file__)), orden.archivo_docx_path
-    )
-    if not os.path.exists(ruta):
-        flash('Archivo no encontrado.', 'danger')
-        return redirect(url_for('admin.ordenes_servicio_admin'))
-    return send_file(ruta, as_attachment=True,
+    buf = generar_pdf_orden(orden)
+    return send_file(buf, as_attachment=True,
                      mimetype='application/pdf',
                      download_name=f'{orden.folio}_OrdenServicio.pdf')
 
@@ -1200,12 +1200,12 @@ def auditorio_historial():
     if tipo_f:
         query = query.filter(ReservaAuditorio.tipo_usuario == tipo_f)
     if q:
-        like = f'%{q}%'
+        like = f'%{_esc(q)}%'
         query = query.filter(
             db.or_(
-                ReservaAuditorio.nombre.ilike(like),
-                ReservaAuditorio.nombre_evento.ilike(like),
-                ReservaAuditorio.departamento.ilike(like),
+                ReservaAuditorio.nombre.ilike(like, escape='\\'),
+                ReservaAuditorio.nombre_evento.ilike(like, escape='\\'),
+                ReservaAuditorio.departamento.ilike(like, escape='\\'),
             )
         )
 
