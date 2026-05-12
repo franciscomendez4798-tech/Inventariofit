@@ -12,6 +12,12 @@
       <h1 class="page-title-gradient mb-1">Estadísticas de Satisfacción</h1>
       <p class="page-subtitle">Resultados históricos por semestre de las encuestas de servicio.</p>
     </div>
+    <a href="{{ url_for('mantenimiento.exportar_encuestas_excel') }}"
+       class="btn btn-success d-flex align-items-center gap-2 shadow-sm"
+       title="Descargar informe completo en Excel">
+      <i class="bi bi-file-earmark-excel-fill fs-5"></i>
+      <span class="d-none d-sm-inline">Descargar informe</span>
+    </a>
   </div>
 
   {# Resumen global #}

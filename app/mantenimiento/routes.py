@@ -1486,3 +1486,139 @@ def estadisticas_encuestas():
         total_completadas=total_completadas,
         total_encuestas=total_encuestas,
     )
+
+
+@mantenimiento_bp.route('/encuestas/exportar-excel')
+@solo_admin_o_mantenimiento
+def exportar_encuestas_excel():
+    """Genera un archivo .xlsx con todas las encuestas respondidas."""
+    import io, json
+    import openpyxl
+    from openpyxl.styles import (Font, PatternFill, Alignment, Border, Side)
+    from openpyxl.utils import get_column_letter
+    from flask import send_file
+
+    ordenes = (OrdenServicio.query
+               .filter(OrdenServicio.encuesta_completada == True)
+               .order_by(OrdenServicio.fecha_solicitud.desc())
+               .all())
+
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "Encuestas de Satisfacción"
+
+    # ── Paleta ──────────────────────────────────────────────────────────────
+    BORDO   = "7B1D1D"
+    BLANCO  = "FFFFFF"
+    GRIS_BG = "F5F5F5"
+    GRIS2   = "E0E0E0"
+
+    fill_header  = PatternFill("solid", fgColor=BORDO)
+    fill_alt     = PatternFill("solid", fgColor=GRIS_BG)
+    fill_plain   = PatternFill("solid", fgColor=BLANCO)
+
+    thin = Side(style="thin", color="CCCCCC")
+    borde = Border(left=thin, right=thin, top=thin, bottom=thin)
+
+    font_header = Font(bold=True, color=BLANCO, size=11)
+    font_title  = Font(bold=True, color=BORDO,  size=14)
+    font_data   = Font(size=10)
+
+    center = Alignment(horizontal="center", vertical="center", wrap_text=True)
+    left   = Alignment(horizontal="left",   vertical="center", wrap_text=True)
+
+    # ── Título del informe ──────────────────────────────────────────────────
+    ws.merge_cells("A1:N1")
+    ws["A1"] = "INFORME DE ENCUESTAS DE SATISFACCIÓN — MANTENIMIENTO UNIVERSITARIO"
+    ws["A1"].font      = font_title
+    ws["A1"].alignment = center
+    ws.row_dimensions[1].height = 28
+
+    ws.merge_cells("A2:N2")
+    from datetime import datetime
+    ws["A2"] = f"Generado el {datetime.now().strftime('%d/%m/%Y %H:%M')}  |  Total encuestas: {len(ordenes)}"
+    ws["A2"].font      = Font(italic=True, color="666666", size=9)
+    ws["A2"].alignment = center
+    ws.row_dimensions[2].height = 16
+
+    # ── Encabezados ─────────────────────────────────────────────────────────
+    headers = [
+        "Folio", "Fecha Solicitud", "Fecha Entrega",
+        "Solicitante", "Departamento",
+        "Tipo", "Servicio(s)",
+        "Técnico",
+        "Experiencia\n(1-5)", "Profesionalismo\n(1-5)",
+        "Calidad\n(1-5)", "Comunicación\n(1-5)",
+        "Cumplimiento\n(1-3)",
+        "Comentarios",
+    ]
+    ws.row_dimensions[3].height = 40
+    for col_idx, h in enumerate(headers, 1):
+        cell = ws.cell(row=3, column=col_idx, value=h)
+        cell.font      = font_header
+        cell.fill      = fill_header
+        cell.alignment = center
+        cell.border    = borde
+
+    # ── Datos ────────────────────────────────────────────────────────────────
+    def fmt_fecha(dt):
+        return dt.strftime("%d/%m/%Y") if dt else "—"
+
+    def stars(val, max_val):
+        if val is None:
+            return "—"
+        return f"{'★' * val}{'☆' * (max_val - val)}  ({val}/{max_val})"
+
+    for row_idx, o in enumerate(ordenes, 4):
+        fill = fill_alt if row_idx % 2 == 0 else fill_plain
+        ws.row_dimensions[row_idx].height = 20
+
+        # nombre técnico
+        tecnico = "—"
+        if o.trabajador_realizo:
+            tecnico = o.trabajador_realizo.nombre
+        elif o.nombre_realizo:
+            tecnico = o.nombre_realizo
+
+        values = [
+            o.folio,
+            fmt_fecha(o.fecha_solicitud),
+            fmt_fecha(o.fecha_entrega),
+            o.solicitante.nombre_completo if o.solicitante else "—",
+            o.departamento.nombre if o.departamento else "—",
+            o.tipo_mantenimiento.capitalize(),
+            o.servicios_texto(),
+            tecnico,
+            stars(o.enc_experiencia,     5),
+            stars(o.enc_profesionalismo, 5),
+            stars(o.enc_calidad,         5),
+            stars(o.enc_comunicacion,    5),
+            stars(o.enc_tiempo_respuesta, 3),
+            o.enc_comentarios or "—",
+        ]
+        for col_idx, val in enumerate(values, 1):
+            cell = ws.cell(row=row_idx, column=col_idx, value=val)
+            cell.font      = font_data
+            cell.fill      = fill
+            cell.border    = borde
+            cell.alignment = center if col_idx < 14 else left
+
+    # ── Anchos de columna ────────────────────────────────────────────────────
+    col_widths = [14, 14, 14, 22, 22, 12, 26, 22, 14, 16, 14, 14, 14, 40]
+    for i, w in enumerate(col_widths, 1):
+        ws.column_dimensions[get_column_letter(i)].width = w
+
+    # ── Congelar fila de encabezados ─────────────────────────────────────────
+    ws.freeze_panes = "A4"
+
+    # ── Enviar archivo ───────────────────────────────────────────────────────
+    buf = io.BytesIO()
+    wb.save(buf)
+    buf.seek(0)
+    filename = f"encuestas_satisfaccion_{datetime.now().strftime('%Y%m%d_%H%M')}.xlsx"
+    return send_file(
+        buf,
+        mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        as_attachment=True,
+        download_name=filename,
+    )
