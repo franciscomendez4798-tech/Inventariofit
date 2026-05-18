@@ -236,7 +236,17 @@
   </div>
 
   {# ── Consumos atribuidos ──────────────────────────────────────────────── #}
-  <h2 class="h5 fw-bold text-dark mb-3 animate-fade-in">Consumos atribuidos</h2>
+  <div class="d-flex align-items-center justify-content-between mb-3 animate-fade-in">
+    <h2 class="h5 fw-bold text-dark mb-0">Consumos atribuidos</h2>
+    {% if consumos_attr %}
+    <a href="{{ url_for('mantenimiento.formatos_zip_trabajador', trab_id=trabajador.id) }}"
+       class="btn btn-sm btn-outline-success d-flex align-items-center gap-2"
+       title="Descargar un par Entrada/Salida por cada movimiento en un solo .zip">
+      <i class="bi bi-file-zip-fill"></i>
+      <span class="d-none d-sm-inline">Descargar todos (.zip)</span>
+    </a>
+    {% endif %}
+  </div>
   <div class="premium-card mb-5 animate-fade-in delay-2">
     <div class="card-body p-0">
       <div class="table-responsive">
@@ -248,8 +258,9 @@
               <th class="border-0 py-3">Fecha</th>
               <th class="border-0 py-3">Motivo</th>
               {% if current_user.es_admin %}
-              <th class="border-0 py-3 text-end pe-4">Valor est.</th>
+              <th class="border-0 py-3 text-end">Valor est.</th>
               {% endif %}
+              <th class="border-0 py-3 text-center pe-3">Formatos</th>
             </tr>
           </thead>
           <tbody>
@@ -260,15 +271,29 @@
               <td class="small text-muted">{{ c.fecha.strftime('%d/%m/%Y %H:%M') }}</td>
               <td class="small text-muted">{{ c.motivo or '—' }}</td>
               {% if current_user.es_admin %}
-              <td class="text-end pe-4 small fw-semibold">
+              <td class="text-end small fw-semibold">
                 {% if c.item and c.item.precio_ref %}
                   ${{ '{:,.2f}'.format(c.item.precio_ref * c.cantidad) }}
                 {% else %}—{% endif %}
               </td>
               {% endif %}
+              <td class="text-center pe-3">
+                <div class="d-flex gap-1 justify-content-center">
+                  <a href="{{ url_for('mantenimiento.formato_pedido_movimiento', mov_id=c.id) }}"
+                     class="btn btn-xs btn-outline-success py-1 px-2 d-flex align-items-center gap-1"
+                     title="R-AP-33-01-01 Entrada — solo este movimiento" style="font-size:.75rem;">
+                    <i class="bi bi-box-arrow-in-down"></i> Entrada
+                  </a>
+                  <a href="{{ url_for('mantenimiento.formato_salida_movimiento', mov_id=c.id) }}"
+                     class="btn btn-xs btn-outline-secondary py-1 px-2 d-flex align-items-center gap-1"
+                     title="R-AP-33-01-02 Salida — solo este movimiento" style="font-size:.75rem;">
+                    <i class="bi bi-box-arrow-up"></i> Salida
+                  </a>
+                </div>
+              </td>
             </tr>
             {% else %}
-            <tr><td colspan="5" class="text-center py-4 text-muted">
+            <tr><td colspan="6" class="text-center py-4 text-muted">
               {% if tiene_historial %}
                 Sin consumos atribuidos a este trabajador.
               {% else %}
@@ -283,13 +308,17 @@
     </div>
   </div>
 
-  {# ── REQUISICIONES ────────────────────────────────────────────────────── #}
-  <h2 class="h5 fw-bold text-dark mb-3 mt-5 animate-fade-in">
-    <i class="bi bi-file-earmark-excel text-success me-2"></i>Requisiciones
+  {# ── REQUISICIONES CONSOLIDADAS ───────────────────────────────────────── #}
+  <h2 class="h5 fw-bold text-dark mb-1 mt-5 animate-fade-in">
+    <i class="bi bi-file-earmark-excel text-success me-2"></i>Formatos consolidados
   </h2>
+  <p class="text-muted small mb-3 animate-fade-in">
+    Resumen total de <strong>todos</strong> los consumos del técnico agrupados por material.
+    Para formatos por movimiento individual usa los botones de la tabla de arriba.
+  </p>
   <div class="row g-3 animate-fade-in">
 
-    {# — Entrada — #}
+    {# — Entrada total — #}
     <div class="col-12 col-md-4">
       <div class="premium-card h-100">
         <div class="card-body d-flex flex-column align-items-center text-center p-4 gap-3">
@@ -298,8 +327,8 @@
             <i class="bi bi-box-arrow-in-down text-white fs-4"></i>
           </div>
           <div>
-            <h6 class="fw-bold mb-1">Entrada</h6>
-            <p class="text-muted small mb-0">Formato R-AP-33-01-01<br>Requisición de Material</p>
+            <h6 class="fw-bold mb-1">Entrada — Total</h6>
+            <p class="text-muted small mb-0">Formato R-AP-33-01-01<br>Todos los consumos agrupados</p>
           </div>
           <a href="{{ url_for('mantenimiento.formato_pedido_trabajador', trab_id=trabajador.id) }}"
              class="btn btn-success w-100 d-flex align-items-center justify-content-center gap-2 mt-auto">
@@ -309,7 +338,7 @@
       </div>
     </div>
 
-    {# — Salida — #}
+    {# — Salida total — #}
     <div class="col-12 col-md-4">
       <div class="premium-card h-100">
         <div class="card-body d-flex flex-column align-items-center text-center p-4 gap-3">
@@ -318,8 +347,8 @@
             <i class="bi bi-box-arrow-up text-white fs-4"></i>
           </div>
           <div>
-            <h6 class="fw-bold mb-1">Salida</h6>
-            <p class="text-muted small mb-0">Formato R-AP-33-01-02<br>Salida de Almacén</p>
+            <h6 class="fw-bold mb-1">Salida — Total</h6>
+            <p class="text-muted small mb-0">Formato R-AP-33-01-02<br>Todos los consumos agrupados</p>
           </div>
           <a href="{{ url_for('mantenimiento.formato_salida_trabajador', trab_id=trabajador.id) }}"
              class="btn btn-secondary w-100 d-flex align-items-center justify-content-center gap-2 mt-auto">
@@ -329,23 +358,23 @@
       </div>
     </div>
 
-    {# — Informe General — #}
+    {# — ZIP individual — #}
     <div class="col-12 col-md-4">
       <div class="premium-card h-100">
         <div class="card-body d-flex flex-column align-items-center text-center p-4 gap-3">
           <div class="rounded-circle d-flex align-items-center justify-content-center"
                style="width:56px;height:56px;background:linear-gradient(135deg,#8B1A1A,#C41E2A);">
-            <i class="bi bi-file-earmark-spreadsheet text-white fs-4"></i>
+            <i class="bi bi-file-zip-fill text-white fs-4"></i>
           </div>
           <div>
-            <h6 class="fw-bold mb-1">Informe General</h6>
-            <p class="text-muted small mb-0">Libro Excel con dos hojas:<br>
-              <strong>Entrada</strong> y <strong>Salida</strong></p>
+            <h6 class="fw-bold mb-1">Todos los formatos</h6>
+            <p class="text-muted small mb-0">Un par Entrada + Salida<br>
+              por cada movimiento individual</p>
           </div>
-          <a href="{{ url_for('mantenimiento.informe_general_trabajador', trab_id=trabajador.id) }}"
+          <a href="{{ url_for('mantenimiento.formatos_zip_trabajador', trab_id=trabajador.id) }}"
              class="btn w-100 d-flex align-items-center justify-content-center gap-2 mt-auto text-white"
              style="background:linear-gradient(135deg,#8B1A1A,#C41E2A);">
-            <i class="bi bi-download"></i> Descargar Excel
+            <i class="bi bi-download"></i> Descargar .zip
           </a>
         </div>
       </div>

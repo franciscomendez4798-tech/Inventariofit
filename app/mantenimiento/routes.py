@@ -440,7 +440,7 @@ def _items_consumos_trabajador(trab_id):
 @mantenimiento_bp.route('/personal/<int:trab_id>/formato_pedido')
 @solo_admin_o_mantenimiento
 def formato_pedido_trabajador(trab_id):
-    """Descarga el formato R-AP-33-01-01 (.xlsx) con los consumos del trabajador."""
+    """Descarga el formato R-AP-33-01-01 (.xlsx) con TODOS los consumos agregados del trabajador."""
     from flask import send_file
     from ..utils.formatos import generar_xlsx_pedido_trabajador
     trabajador = Trabajador.query.get_or_404(trab_id)
@@ -457,7 +457,7 @@ def formato_pedido_trabajador(trab_id):
 @mantenimiento_bp.route('/personal/<int:trab_id>/formato_salida')
 @solo_admin_o_mantenimiento
 def formato_salida_trabajador(trab_id):
-    """Descarga el formato R-AP-33-01-02 (.xlsx) con los consumos del trabajador."""
+    """Descarga el formato R-AP-33-01-02 (.xlsx) con TODOS los consumos agregados del trabajador."""
     from flask import send_file
     from ..utils.formatos import generar_xlsx_salida_trabajador
     trabajador = Trabajador.query.get_or_404(trab_id)
@@ -474,7 +474,7 @@ def formato_salida_trabajador(trab_id):
 @mantenimiento_bp.route('/personal/<int:trab_id>/informe-general')
 @solo_admin_o_mantenimiento
 def informe_general_trabajador(trab_id):
-    """Descarga un libro Excel con dos hojas (Entrada + Salida) con los consumos del trabajador."""
+    """Descarga un libro Excel con dos hojas (Entrada + Salida) con todos los consumos del trabajador."""
     from flask import send_file
     from ..utils.formatos import generar_xlsx_informe_general
     trabajador = Trabajador.query.get_or_404(trab_id)
@@ -486,6 +486,95 @@ def informe_general_trabajador(trab_id):
         as_attachment=True,
         download_name=f'Informe_General_{nombre_safe}.xlsx',
         mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    )
+
+
+# ── Por movimiento individual ────────────────────────────────────────────────
+
+def _items_de_movimiento(mov):
+    """Convierte un MovimientoStockMant en la lista de items que esperan los generadores."""
+    return [{
+        'descripcion': mov.item.nombre if mov.item else 'Sin nombre',
+        'cantidad':    mov.cantidad,
+        'unidad':      mov.item.unidad_medida if mov.item else 'pza',
+    }]
+
+
+@mantenimiento_bp.route('/consumos/<int:mov_id>/formato-pedido')
+@solo_admin_o_mantenimiento
+def formato_pedido_movimiento(mov_id):
+    """Descarga R-AP-33-01-01 únicamente para el movimiento indicado."""
+    from flask import send_file
+    from ..utils.formatos import generar_xlsx_pedido_trabajador
+    mov = MovimientoStockMant.query.get_or_404(mov_id)
+    if mov.tipo != 'salida':
+        abort(400)
+    nombre_tec  = mov.trabajador.nombre if mov.trabajador else 'Sin técnico'
+    area        = mov.trabajador.areas_str if mov.trabajador else ''
+    items       = _items_de_movimiento(mov)
+    buffer      = generar_xlsx_pedido_trabajador(nombre_tec, items=items, area=area)
+    fecha_str   = mov.fecha.strftime('%Y%m%d')
+    item_safe   = (mov.item.nombre if mov.item else 'material').replace(' ', '_')
+    return send_file(
+        buffer,
+        as_attachment=True,
+        download_name=f'R-AP-33-01-01_{fecha_str}_{item_safe}.xlsx',
+        mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    )
+
+
+@mantenimiento_bp.route('/consumos/<int:mov_id>/formato-salida')
+@solo_admin_o_mantenimiento
+def formato_salida_movimiento(mov_id):
+    """Descarga R-AP-33-01-02 únicamente para el movimiento indicado."""
+    from flask import send_file
+    from ..utils.formatos import generar_xlsx_salida_trabajador
+    mov = MovimientoStockMant.query.get_or_404(mov_id)
+    if mov.tipo != 'salida':
+        abort(400)
+    nombre_tec  = mov.trabajador.nombre if mov.trabajador else 'Sin técnico'
+    area        = mov.trabajador.areas_str if mov.trabajador else ''
+    items       = _items_de_movimiento(mov)
+    buffer      = generar_xlsx_salida_trabajador(nombre_tec, items=items, area=area)
+    fecha_str   = mov.fecha.strftime('%Y%m%d')
+    item_safe   = (mov.item.nombre if mov.item else 'material').replace(' ', '_')
+    return send_file(
+        buffer,
+        as_attachment=True,
+        download_name=f'R-AP-33-01-02_{fecha_str}_{item_safe}.xlsx',
+        mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    )
+
+
+@mantenimiento_bp.route('/personal/<int:trab_id>/formatos-zip')
+@solo_admin_o_mantenimiento
+def formatos_zip_trabajador(trab_id):
+    """Descarga un ZIP con un par entrada/salida por cada movimiento individual del técnico."""
+    import io, zipfile
+    from flask import send_file
+    from ..utils.formatos import generar_xlsx_pedido_trabajador, generar_xlsx_salida_trabajador
+    trabajador = Trabajador.query.get_or_404(trab_id)
+    movs = (MovimientoStockMant.query
+            .filter_by(id_trabajador=trab_id, tipo='salida')
+            .order_by(MovimientoStockMant.fecha)
+            .all())
+    zip_buf = io.BytesIO()
+    with zipfile.ZipFile(zip_buf, 'w', zipfile.ZIP_DEFLATED) as zf:
+        for i, mov in enumerate(movs, 1):
+            items     = _items_de_movimiento(mov)
+            fecha_str = mov.fecha.strftime('%Y%m%d')
+            item_safe = (mov.item.nombre if mov.item else 'material').replace(' ', '_')
+            buf_e = generar_xlsx_pedido_trabajador(trabajador.nombre, items=items, area=trabajador.areas_str)
+            buf_s = generar_xlsx_salida_trabajador(trabajador.nombre, items=items, area=trabajador.areas_str)
+            zf.writestr(f'{i:03d}_{fecha_str}_{item_safe}_R-AP-33-01-01_Entrada.xlsx', buf_e.read())
+            zf.writestr(f'{i:03d}_{fecha_str}_{item_safe}_R-AP-33-01-02_Salida.xlsx',  buf_s.read())
+    zip_buf.seek(0)
+    nombre_safe = trabajador.nombre.replace(' ', '_')
+    return send_file(
+        zip_buf,
+        as_attachment=True,
+        download_name=f'Formatos_{nombre_safe}.zip',
+        mimetype='application/zip',
     )
 
 
