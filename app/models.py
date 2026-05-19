@@ -487,7 +487,7 @@ class OrdenServicio(db.Model):
     """
     __tablename__ = 'Ordenes_Servicio'
 
-    ESTADOS = ['solicitada', 'en_proceso', 'completada', 'no_realizada', 'entregada']
+    ESTADOS = ['solicitada', 'programada', 'en_proceso', 'completada', 'no_realizada', 'entregada']
     TIPOS_MANT = ['preventivo', 'correctivo']
     SERVICIOS_OPCIONES = [
         'plomeria', 'computo', 'electricidad',
@@ -509,6 +509,7 @@ class OrdenServicio(db.Model):
     otro_servicio       = db.Column(db.String(200))
     descripcion         = db.Column(db.Text, nullable=False)
     estado              = db.Column(db.String(20), default='solicitada', nullable=False)
+    fecha_programada    = db.Column(db.Date, nullable=True)
 
     # Llenado por mantenimiento al completar
     fecha_ejecucion         = db.Column(db.DateTime)
@@ -582,6 +583,21 @@ class OrdenServicio(db.Model):
 
     def __repr__(self):
         return f'<OrdenServicio {self.folio} [{self.estado}]>'
+
+
+class Notificacion(db.Model):
+    """Notificaciones internas para usuarios (ej. orden programada)."""
+    __tablename__ = 'Notificaciones'
+
+    id         = db.Column(db.Integer, primary_key=True)
+    id_usuario = db.Column(db.Integer, db.ForeignKey('Usuarios.id'), nullable=False)
+    titulo     = db.Column(db.String(200), nullable=False)
+    mensaje    = db.Column(db.Text, nullable=False)
+    leida      = db.Column(db.Boolean, default=False, nullable=False)
+    creada_en  = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    enlace     = db.Column(db.String(500))
+
+    usuario = db.relationship('Usuario', foreign_keys=[id_usuario])
 
 
 # ═══════════════════════════════════════════════════════════════════════════════

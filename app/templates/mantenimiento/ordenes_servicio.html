@@ -23,7 +23,7 @@
     <div class="col-md-4">
       <select name="estado" class="form-select">
         <option value="">— Todos los estados —</option>
-        {% set labels = {'solicitada':'Enviada','en_proceso':'En proceso','completada':'Completada','no_realizada':'No realizada','entregada':'Entregada'} %}
+        {% set labels = {'solicitada':'Enviada','programada':'Programada','en_proceso':'En proceso','completada':'Completada','no_realizada':'No realizada','entregada':'Entregada'} %}
         {% for e in ESTADOS %}
         <option value="{{ e }}" {% if e == estado_f %}selected{% endif %}>{{ labels.get(e, e) }}</option>
         {% endfor %}
@@ -36,100 +36,212 @@
     </div>
   </form>
 
-  {% set badge_color = {'solicitada':'primary','en_proceso':'warning','completada':'success','no_realizada':'danger','entregada':'dark'} %}
-  {% set badge_label = {'solicitada':'Enviada','en_proceso':'En proceso','completada':'Completada','no_realizada':'No realizada','entregada':'Entregada'} %}
+  {% set badge_color = {'solicitada':'primary','programada':'info','en_proceso':'warning','completada':'success','no_realizada':'danger','entregada':'dark'} %}
+  {% set badge_label = {'solicitada':'Enviada','programada':'Programada','en_proceso':'En proceso','completada':'Completada','no_realizada':'No realizada','entregada':'Entregada'} %}
 
-  {% if not ordenes %}
-  <div class="premium-card text-center py-5">
-    <i class="bi bi-inbox display-4 text-muted mb-3 d-block"></i>
-    <p class="text-muted">No hay órdenes con los filtros actuales.</p>
-  </div>
-  {% else %}
-  <div class="premium-card">
-    <div class="table-responsive">
-      <table class="table table-hover align-middle mb-0">
-        <thead class="table-light">
-          <tr>
-            <th>Folio</th>
-            <th>Solicitante</th>
-            <th>Tipo</th>
-            <th>Servicios</th>
-            <th>Fecha solicitud</th>
-            <th>Estado</th>
-            <th class="text-center">Acciones</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for o in ordenes %}
-          <tr>
-            <td class="font-monospace fw-bold small">{{ o.folio }}</td>
-            <td>
-              <div class="fw-semibold">{{ o.solicitante.nombre_completo }}</div>
-              <div class="text-muted small">{{ o.departamento.nombre if o.departamento else '—' }}</div>
-            </td>
-            <td><span class="badge bg-light text-dark text-capitalize">{{ o.tipo_mantenimiento }}</span></td>
-            <td class="small">{{ o.servicios_texto() or '—' }}</td>
-            <td class="small text-muted">{{ o.fecha_solicitud.strftime('%d/%m/%Y') }}</td>
-            <td>
-              <span class="badge bg-{{ badge_color.get(o.estado,'secondary') }}">
-                {{ badge_label.get(o.estado, o.estado) }}
-              </span>
-              {% if o.estado == 'entregada' %}
-                {% if o.firma_tipo == 'hmac_sha256' %}
-                <span class="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25 rounded-pill ms-1"
-                      title="Firma digital HMAC-SHA256 verificada">
-                  <i class="bi bi-shield-check me-1"></i>Digital
-                </span>
-                {% else %}
-                <span class="badge bg-secondary bg-opacity-10 text-secondary border border-secondary border-opacity-25 rounded-pill ms-1"
-                      title="Firma de imagen PNG (formato heredado)">
-                  <i class="bi bi-image me-1"></i>PNG
-                </span>
-                {% endif %}
-              {% endif %}
-            </td>
-            <td class="text-center">
-              <div class="d-flex gap-1 justify-content-center flex-wrap">
-                {% if o.estado == 'solicitada' %}
-                <form method="POST" action="{{ url_for('mantenimiento.procesar_orden', orden_id=o.id) }}"
-                      class="d-inline">
-                  <button class="btn btn-sm btn-warning" title="Marcar en proceso">
-                    <i class="bi bi-play-circle"></i>
-                  </button>
-                </form>
-                <a href="{{ url_for('mantenimiento.completar_orden', orden_id=o.id) }}"
-                   class="btn btn-sm btn-primary" title="Completar">
-                  <i class="bi bi-check2-circle"></i>
-                </a>
-                {% elif o.estado == 'en_proceso' %}
-                <a href="{{ url_for('mantenimiento.completar_orden', orden_id=o.id) }}"
-                   class="btn btn-sm btn-primary" title="Registrar resultado">
-                  <i class="bi bi-check2-circle"></i>
-                </a>
-                {% elif o.estado in ('completada','no_realizada') %}
-                <form method="POST"
-                      action="{{ url_for('mantenimiento.generar_token_firma', orden_id=o.id) }}"
-                      class="d-inline">
-                  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                  <button type="submit" class="btn btn-sm btn-outline-primary"
-                          title="Generar enlace de firma móvil (QR)">
-                    <i class="bi bi-qr-code me-1"></i>Firmar
-                  </button>
-                </form>
-                {% elif o.estado == 'entregada' %}
-                <a href="{{ url_for('mantenimiento.descargar_orden_docx', orden_id=o.id) }}"
-                   class="btn btn-sm btn-outline-danger" title="Descargar PDF">
-                  <i class="bi bi-file-earmark-pdf"></i>
-                </a>
-                {% endif %}
-              </div>
-            </td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
+  {# ── Vista filtrada (cuando se selecciona un estado específico) ── #}
+  {% if estado_f %}
+    {% if not ordenes %}
+    <div class="premium-card text-center py-5">
+      <i class="bi bi-inbox display-4 text-muted mb-3 d-block"></i>
+      <p class="text-muted">No hay órdenes con los filtros actuales.</p>
     </div>
-  </div>
-  {% endif %}
+    {% else %}
+    <div class="premium-card">
+      <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+          <thead class="table-light">
+            <tr>
+              <th>Folio</th><th>Solicitante</th><th>Tipo</th><th>Servicios</th>
+              <th>Fecha solicitud</th><th>Estado</th><th class="text-center">Acciones</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for o in ordenes %}
+            {{ _orden_row(o, badge_color, badge_label) }}
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+    {% endif %}
+
+  {# ── Vista sin filtro: secciones separadas ── #}
+  {% else %}
+
+    {# PENDIENTES #}
+    <div class="d-flex align-items-center gap-2 mb-2">
+      <span class="fw-bold text-primary fs-6"><i class="bi bi-hourglass-split me-1"></i>Pendientes</span>
+      <span class="badge bg-primary rounded-pill">{{ pendientes|length }}</span>
+    </div>
+    {% if not pendientes %}
+    <div class="premium-card text-center py-4 mb-4">
+      <i class="bi bi-check2-all text-success fs-3 d-block mb-2"></i>
+      <p class="text-muted mb-0 small">Sin solicitudes pendientes de revisión.</p>
+    </div>
+    {% else %}
+    <div class="premium-card mb-4">
+      <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+          <thead class="table-light">
+            <tr>
+              <th>Folio</th><th>Solicitante</th><th>Tipo</th><th>Servicios</th>
+              <th>Fecha solicitud</th><th class="text-center">Acciones</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for o in pendientes %}
+            <tr>
+              <td class="font-monospace fw-bold small">{{ o.folio }}</td>
+              <td>
+                <div class="fw-semibold">{{ o.solicitante.nombre_completo }}</div>
+                <div class="text-muted small">{{ o.departamento.nombre if o.departamento else '—' }}</div>
+              </td>
+              <td><span class="badge bg-light text-dark text-capitalize">{{ o.tipo_mantenimiento }}</span></td>
+              <td class="small">{{ o.servicios_texto() or '—' }}</td>
+              <td class="small text-muted">{{ o.fecha_solicitud.strftime('%d/%m/%Y') }}</td>
+              <td class="text-center">
+                <a href="{{ url_for('mantenimiento.revisar_orden', orden_id=o.id) }}"
+                   class="btn btn-sm btn-primary">
+                  <i class="bi bi-eye me-1"></i>Ver Orden
+                </a>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+    {% endif %}
+
+    {# PROGRAMADAS #}
+    <div class="d-flex align-items-center gap-2 mb-2">
+      <span class="fw-bold text-info fs-6" style="color:#0d6efd!important;">
+        <i class="bi bi-calendar2-check me-1"></i>Programadas
+      </span>
+      <span class="badge rounded-pill" style="background:#e3f0fb;color:#1a6faf;">{{ programadas|length }}</span>
+    </div>
+    {% if not programadas %}
+    <div class="premium-card text-center py-4 mb-4">
+      <i class="bi bi-calendar2 text-muted fs-3 d-block mb-2"></i>
+      <p class="text-muted mb-0 small">No hay órdenes programadas.</p>
+    </div>
+    {% else %}
+    <div class="premium-card mb-4">
+      <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+          <thead class="table-light">
+            <tr>
+              <th>Folio</th><th>Solicitante</th><th>Tipo</th><th>Servicios</th>
+              <th>Fecha solicitud</th><th>📅 Programada</th><th class="text-center">Acciones</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for o in programadas %}
+            <tr>
+              <td class="font-monospace fw-bold small">{{ o.folio }}</td>
+              <td>
+                <div class="fw-semibold">{{ o.solicitante.nombre_completo }}</div>
+                <div class="text-muted small">{{ o.departamento.nombre if o.departamento else '—' }}</div>
+              </td>
+              <td><span class="badge bg-light text-dark text-capitalize">{{ o.tipo_mantenimiento }}</span></td>
+              <td class="small">{{ o.servicios_texto() or '—' }}</td>
+              <td class="small text-muted">{{ o.fecha_solicitud.strftime('%d/%m/%Y') }}</td>
+              <td>
+                <span class="badge px-2 py-1" style="background:#e3f0fb;color:#1a6faf;font-size:.8rem;">
+                  <i class="bi bi-calendar-event me-1"></i>
+                  {{ o.fecha_programada.strftime('%d/%m/%Y') if o.fecha_programada else '—' }}
+                </span>
+              </td>
+              <td class="text-center">
+                <a href="{{ url_for('mantenimiento.revisar_orden', orden_id=o.id) }}"
+                   class="btn btn-sm btn-outline-primary">
+                  <i class="bi bi-eye me-1"></i>Ver Orden
+                </a>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+    {% endif %}
+
+    {# HISTORIAL (en_proceso, completada, no_realizada, entregada) #}
+    {% if ordenes %}
+    <div class="d-flex align-items-center gap-2 mb-2">
+      <span class="fw-bold text-secondary fs-6"><i class="bi bi-archive me-1"></i>Historial</span>
+      <span class="badge bg-secondary rounded-pill">{{ ordenes|length }}</span>
+    </div>
+    <div class="premium-card mb-4">
+      <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+          <thead class="table-light">
+            <tr>
+              <th>Folio</th><th>Solicitante</th><th>Tipo</th><th>Servicios</th>
+              <th>Fecha solicitud</th><th>Estado</th><th class="text-center">Acciones</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for o in ordenes %}
+            <tr>
+              <td class="font-monospace fw-bold small">{{ o.folio }}</td>
+              <td>
+                <div class="fw-semibold">{{ o.solicitante.nombre_completo }}</div>
+                <div class="text-muted small">{{ o.departamento.nombre if o.departamento else '—' }}</div>
+              </td>
+              <td><span class="badge bg-light text-dark text-capitalize">{{ o.tipo_mantenimiento }}</span></td>
+              <td class="small">{{ o.servicios_texto() or '—' }}</td>
+              <td class="small text-muted">{{ o.fecha_solicitud.strftime('%d/%m/%Y') }}</td>
+              <td>
+                <span class="badge bg-{{ badge_color.get(o.estado,'secondary') }}">
+                  {{ badge_label.get(o.estado, o.estado) }}
+                </span>
+                {% if o.estado == 'entregada' %}
+                  {% if o.firma_tipo == 'hmac_sha256' %}
+                  <span class="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25 rounded-pill ms-1">
+                    <i class="bi bi-shield-check me-1"></i>Digital
+                  </span>
+                  {% else %}
+                  <span class="badge bg-secondary bg-opacity-10 text-secondary border border-secondary border-opacity-25 rounded-pill ms-1">
+                    <i class="bi bi-image me-1"></i>PNG
+                  </span>
+                  {% endif %}
+                {% endif %}
+              </td>
+              <td class="text-center">
+                <div class="d-flex gap-1 justify-content-center flex-wrap">
+                  {% if o.estado == 'en_proceso' %}
+                  <a href="{{ url_for('mantenimiento.completar_orden', orden_id=o.id) }}"
+                     class="btn btn-sm btn-primary" title="Registrar resultado">
+                    <i class="bi bi-check2-circle"></i>
+                  </a>
+                  {% elif o.estado in ('completada','no_realizada') %}
+                  <form method="POST"
+                        action="{{ url_for('mantenimiento.generar_token_firma', orden_id=o.id) }}"
+                        class="d-inline">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button type="submit" class="btn btn-sm btn-outline-primary" title="Firmar">
+                      <i class="bi bi-qr-code me-1"></i>Firmar
+                    </button>
+                  </form>
+                  {% elif o.estado == 'entregada' %}
+                  <a href="{{ url_for('mantenimiento.descargar_orden_docx', orden_id=o.id) }}"
+                     class="btn btn-sm btn-outline-danger" title="Descargar PDF">
+                    <i class="bi bi-file-earmark-pdf"></i>
+                  </a>
+                  {% endif %}
+                </div>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+    {% endif %}
+
+  {% endif %}{# fin bloque sin filtro #}
+
 </div>
 {% endblock %}

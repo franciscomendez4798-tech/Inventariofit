@@ -7,7 +7,7 @@ from sqlalchemy import desc
 from ..models import (db, Trabajador, Area, Prestamo, PedidoEquipo,
                        StockMantenimiento, MovimientoStockMant, Material, MovimientoInventario,
                        Herramienta, OrdenServicio, FirmaTrabajador, FirmaUsuario,
-                       DispositivoAV, PrestamoAV)
+                       DispositivoAV, PrestamoAV, Notificacion)
 
 
 def _esc(q: str) -> str:
@@ -1182,31 +1182,102 @@ def ordenes_servicio():
     estado_f = request.args.get('estado', '')
     q        = request.args.get('q', '').strip()
 
-    query = OrdenServicio.query.order_by(desc(OrdenServicio.fecha_solicitud))
-    if estado_f in OrdenServicio.ESTADOS:
-        query = query.filter_by(estado=estado_f)
+    base_query = OrdenServicio.query.order_by(desc(OrdenServicio.fecha_solicitud))
+
     if q:
         from ..models import Usuario
-        query = query.join(Usuario, OrdenServicio.id_solicitante == Usuario.id).filter(
+        base_query = base_query.join(Usuario, OrdenServicio.id_solicitante == Usuario.id).filter(
             Usuario.nombre_completo.ilike(f'%{_esc(q)}%', escape='\\')
         )
 
-    ordenes = query.all()
+    if estado_f in OrdenServicio.ESTADOS:
+        ordenes = base_query.filter(OrdenServicio.estado == estado_f).all()
+        pendientes   = []
+        programadas  = []
+    else:
+        ordenes      = []
+        pendientes   = base_query.filter(OrdenServicio.estado == 'solicitada').all()
+        programadas  = base_query.filter(OrdenServicio.estado == 'programada').order_by(OrdenServicio.fecha_programada).all()
+        ordenes      = base_query.filter(
+            OrdenServicio.estado.notin_(['solicitada', 'programada'])
+        ).all()
+
     return render_template('mantenimiento/ordenes_servicio.html',
-                           ordenes=ordenes, estado_f=estado_f, q=q,
+                           ordenes=ordenes, pendientes=pendientes,
+                           programadas=programadas, estado_f=estado_f, q=q,
                            ESTADOS=OrdenServicio.ESTADOS)
+
+
+@mantenimiento_bp.route('/ordenes-servicio/<int:orden_id>/revisar')
+@solo_admin_o_mantenimiento
+def revisar_orden(orden_id):
+    """Vista de revisión: encargado evalúa la orden antes de decidir qué hacer."""
+    orden = OrdenServicio.query.get_or_404(orden_id)
+    trabajadores = Trabajador.query.filter_by(activo=True).order_by(Trabajador.nombre).all()
+    return render_template('mantenimiento/revisar_orden.html',
+                           orden=orden, trabajadores=trabajadores,
+                           now=datetime.utcnow())
+
+
+@mantenimiento_bp.route('/ordenes-servicio/<int:orden_id>/aprobar', methods=['POST'])
+@solo_admin_o_mantenimiento
+def aprobar_orden(orden_id):
+    """Aprueba la orden y la pasa a en_proceso."""
+    orden = OrdenServicio.query.get_or_404(orden_id)
+    if orden.estado not in ('solicitada', 'programada'):
+        flash('Esta orden ya no puede modificarse.', 'warning')
+        return redirect(url_for('mantenimiento.ordenes_servicio'))
+    orden.estado = 'en_proceso'
+    orden.fecha_programada = None
+    db.session.commit()
+    flash(f'Orden {orden.folio} aprobada y en proceso.', 'success')
+    return redirect(url_for('mantenimiento.ordenes_servicio'))
+
+
+@mantenimiento_bp.route('/ordenes-servicio/<int:orden_id>/programar', methods=['POST'])
+@solo_admin_o_mantenimiento
+def programar_orden(orden_id):
+    """Programa la orden para una fecha futura y notifica al solicitante."""
+    orden = OrdenServicio.query.get_or_404(orden_id)
+    if orden.estado not in ('solicitada', 'programada'):
+        flash('Esta orden ya no puede modificarse.', 'warning')
+        return redirect(url_for('mantenimiento.ordenes_servicio'))
+
+    fecha_str = request.form.get('fecha_programada', '').strip()
+    if not fecha_str:
+        flash('Debes seleccionar una fecha.', 'danger')
+        return redirect(url_for('mantenimiento.revisar_orden', orden_id=orden_id))
+
+    try:
+        from datetime import date
+        fecha = datetime.strptime(fecha_str, '%Y-%m-%d').date()
+    except ValueError:
+        flash('Fecha inválida.', 'danger')
+        return redirect(url_for('mantenimiento.revisar_orden', orden_id=orden_id))
+
+    orden.estado = 'programada'
+    orden.fecha_programada = fecha
+    db.session.flush()
+
+    fecha_fmt = fecha.strftime('%d de %B de %Y')
+    notif = Notificacion(
+        id_usuario=orden.id_solicitante,
+        titulo='Tu solicitud de servicio fue programada',
+        mensaje=(f'Tu solicitud {orden.folio} ({orden.servicios_texto() or "mantenimiento"}) '
+                 f'ha sido programada para atenderse el {fecha_fmt}.'),
+        enlace='/portal/mis-ordenes',
+    )
+    db.session.add(notif)
+    db.session.commit()
+    flash(f'Orden {orden.folio} programada para el {fecha_fmt}. Solicitante notificado.', 'success')
+    return redirect(url_for('mantenimiento.ordenes_servicio'))
 
 
 @mantenimiento_bp.route('/ordenes-servicio/<int:orden_id>/procesar', methods=['POST'])
 @solo_admin_o_mantenimiento
 def procesar_orden(orden_id):
-    """Marca la orden como en_proceso."""
-    orden = OrdenServicio.query.get_or_404(orden_id)
-    if orden.estado == 'solicitada':
-        orden.estado = 'en_proceso'
-        db.session.commit()
-        flash(f'Orden {orden.folio} marcada como en proceso.', 'success')
-    return redirect(url_for('mantenimiento.ordenes_servicio'))
+    """Compatibilidad: redirige a aprobar_orden."""
+    return aprobar_orden(orden_id)
 
 
 @mantenimiento_bp.route('/ordenes-servicio/<int:orden_id>/completar', methods=['GET', 'POST'])

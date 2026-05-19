@@ -114,7 +114,7 @@ def panel():
     from ..models import OrdenServicio
     ordenes_activas = OrdenServicio.query.filter(
         OrdenServicio.id_solicitante == current_user.id,
-        OrdenServicio.estado.in_(['solicitada', 'en_proceso', 'completada'])
+        OrdenServicio.estado.in_(['solicitada', 'programada', 'en_proceso', 'completada'])
     ).count()
     ordenes_pendiente_encuesta = OrdenServicio.query.filter_by(
         id_solicitante=current_user.id,
@@ -128,6 +128,12 @@ def panel():
         encuesta_completada=False,
     ).order_by(OrdenServicio.fecha_solicitud.asc()).first()
 
+    from ..models import Notificacion
+    notificaciones_no_leidas = (Notificacion.query
+                                .filter_by(id_usuario=current_user.id, leida=False)
+                                .order_by(Notificacion.creada_en.desc())
+                                .all())
+
     return render_template(
         'solicitante/panel.html',
         departamento=depto,
@@ -139,6 +145,7 @@ def panel():
         ordenes_activas=ordenes_activas,
         ordenes_pendiente_encuesta=ordenes_pendiente_encuesta,
         orden_encuesta_pendiente=orden_encuesta_pendiente,
+        notificaciones=notificaciones_no_leidas,
     )
 
 
@@ -471,12 +478,31 @@ def solicitar_mantenimiento():
 @solo_solicitante
 def mis_ordenes_servicio():
     """Lista las órdenes de servicio del solicitante."""
-    from ..models import OrdenServicio
+    from ..models import OrdenServicio, Notificacion
     ordenes = (OrdenServicio.query
                .filter_by(id_solicitante=current_user.id)
                .order_by(OrdenServicio.fecha_solicitud.desc())
                .all())
-    return render_template('solicitante/mis_ordenes_servicio.html', ordenes=ordenes)
+    notificaciones_no_leidas = (Notificacion.query
+                                .filter_by(id_usuario=current_user.id, leida=False)
+                                .order_by(Notificacion.creada_en.desc())
+                                .all())
+    return render_template('solicitante/mis_ordenes_servicio.html',
+                           ordenes=ordenes,
+                           notificaciones=notificaciones_no_leidas)
+
+
+@sol_bp.route('/notificacion/<int:notif_id>/leer', methods=['POST'])
+@login_required
+@solo_solicitante
+def marcar_notificacion_leida(notif_id):
+    from ..models import Notificacion
+    notif = Notificacion.query.get_or_404(notif_id)
+    if notif.id_usuario == current_user.id:
+        notif.leida = True
+        db.session.commit()
+    next_url = request.form.get('next') or url_for('solicitante.mis_ordenes_servicio')
+    return redirect(next_url)
 
 
 @sol_bp.route('/mantenimiento/orden/<int:orden_id>/encuesta', methods=['GET', 'POST'])

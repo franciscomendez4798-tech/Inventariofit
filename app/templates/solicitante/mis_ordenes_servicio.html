@@ -17,6 +17,27 @@
     </a>
   </div>
 
+  {# Notificaciones no leídas #}
+  {% for notif in notificaciones %}
+  <div class="d-flex align-items-start gap-3 p-3 mb-2 rounded-3"
+       style="background:#e8f4fd;border-left:4px solid #1a6faf;">
+    <i class="bi bi-bell-fill text-primary mt-1 flex-shrink-0"></i>
+    <div class="flex-grow-1">
+      <div class="fw-semibold small" style="color:#1a6faf;">{{ notif.titulo }}</div>
+      <div class="text-muted small">{{ notif.mensaje }}</div>
+    </div>
+    <form method="POST"
+          action="{{ url_for('solicitante.marcar_notificacion_leida', notif_id=notif.id) }}"
+          class="flex-shrink-0">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <input type="hidden" name="next" value="{{ request.path }}">
+      <button type="submit" class="btn btn-sm btn-link text-muted p-0" title="Marcar como leída">
+        <i class="bi bi-x-lg"></i>
+      </button>
+    </form>
+  </div>
+  {% endfor %}
+
   {% if not ordenes %}
   <div class="premium-card text-center py-5">
     <i class="bi bi-tools display-4 text-muted mb-3 d-block"></i>
@@ -30,6 +51,7 @@
 
   {% set badge_color = {
     'solicitada': 'primary',
+    'programada': 'info',
     'en_proceso': 'warning',
     'completada': 'success',
     'no_realizada': 'danger',
@@ -37,6 +59,7 @@
   } %}
   {% set badge_label = {
     'solicitada': 'Enviada',
+    'programada': 'Programada',
     'en_proceso': 'En proceso',
     'completada': 'Completada',
     'no_realizada': 'No realizada',
@@ -85,6 +108,15 @@
               {% endif %}
             </div>
           </div>
+
+          {% if orden.estado == 'programada' and orden.fecha_programada %}
+          <hr class="my-2">
+          <div class="small" style="color:#1a6faf;">
+            <i class="bi bi-calendar2-check me-1"></i>
+            Tu solicitud está programada para atenderse el
+            <strong>{{ orden.fecha_programada.strftime('%d/%m/%Y') }}</strong>.
+          </div>
+          {% endif %}
 
           {% if orden.estado in ('completada', 'no_realizada', 'entregada') and orden.fecha_ejecucion %}
           <hr class="my-2">

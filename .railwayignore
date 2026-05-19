@@ -1,0 +1,10 @@
+.claude/
+venv/
+instance/
+__pycache__/
+*.py[cod]
+*.egg-info/
+migration_supabase.sql
+sqlite_data.json
+run_migration.py
+tests/
