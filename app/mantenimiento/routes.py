@@ -1285,7 +1285,7 @@ def procesar_orden(orden_id):
 def completar_orden(orden_id):
     """Formulario para registrar el resultado del servicio."""
     orden = OrdenServicio.query.get_or_404(orden_id)
-    if orden.estado not in ('solicitada', 'en_proceso'):
+    if orden.estado not in ('solicitada', 'programada', 'en_proceso'):
         flash('Esta orden ya fue procesada.', 'info')
         return redirect(url_for('mantenimiento.ordenes_servicio'))
 
