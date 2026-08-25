@@ -64,7 +64,18 @@ echo -e "${GREEN}✅ Directorio instance/ listo${NC}"
 echo ""
 echo "▶ Inicializando base de datos SQLite..."
 cd "$PROJECT_DIR"
-FLASK_ENV=production "$VENV_DIR/bin/flask" --app wsgi init-db
+"$VENV_DIR/bin/python3.10" -c "
+from dotenv import load_dotenv
+load_dotenv('.env')
+import os
+os.environ['FLASK_ENV'] = 'production'
+from app import create_app
+from app.extensions import db
+app = create_app('production')
+with app.app_context():
+    db.create_all()
+    print('  Tablas creadas/verificadas correctamente')
+"
 echo -e "${GREEN}✅ Base de datos inicializada${NC}"
 
 # ── 6. Actualizar pythonanywhere_wsgi.py con el usuario correcto ──────────────
