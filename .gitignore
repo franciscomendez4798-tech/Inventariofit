@@ -1,3 +1,7 @@
+# Claude Code internals
+.claude/
+CREDENCIALES_USUARIOS.txt
+
 # Entorno Python
 venv/
 __pycache__/
@@ -36,3 +40,8 @@ run_migration.py
 
 # Scripts con credenciales en texto plano
 deploy_railway.sh
+
+# Scripts de verificación (solo uso local)
+check_routes.py
+check_users.py
+create_tables.py

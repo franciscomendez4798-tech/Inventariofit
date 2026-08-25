@@ -1,5 +1,9 @@
 # ══════════════════════════════════════════════════════════════════════════════
-# requirements.txt — Dependencias del Sistema de Inventarios FING
+# requirements_pythonanywhere.txt
+# Dependencias compatibles con PythonAnywhere Free (Python 3.10)
+#
+# PythonAnywhere Free usa Python 3.10 — localmente usamos 3.14.
+# Este archivo fija versiones que funcionan en Python 3.10.
 # ══════════════════════════════════════════════════════════════════════════════
 
 # ── Framework Web ─────────────────────────────────────────────────────────────
@@ -12,25 +16,28 @@ Flask-Limiter>=3.5.0
 Werkzeug==3.0.3
 python-dotenv==1.0.1
 
-# ── Servidor WSGI de producción ───────────────────────────────────────────────
-gunicorn==23.0.0
-setuptools>=70.0       # Requerido por gunicorn en Python 3.12+
+# ── WSGI / Servidor ───────────────────────────────────────────────────────────
+# PythonAnywhere usa su propio servidor (no necesita gunicorn)
+# pero lo incluimos por si se usa el script entrypoint.sh
+gunicorn>=20.1.0
+setuptools>=65.0
 
 # ── Base de datos ─────────────────────────────────────────────────────────────
-# SQLite viene incluido en Python (sin dependencia extra).
-# PostgreSQL — necesario para Render / Railway / AWS RDS / Supabase:
-psycopg2-binary==2.9.9
+# SQLite incluido en Python (sin dependencia extra)
+# MySQL (si usas la BD gratuita de PythonAnywhere):
+# mysql-connector-python>=8.0.0
+# PyMySQL>=1.1.0
 
 # ── Generación de documentos ──────────────────────────────────────────────────
-openpyxl>=3.1.2        # Excel (.xlsx)
-reportlab>=4.2.0       # PDF
-Pillow>=10.3.0         # Imágenes (firmas, logos)
-python-docx>=1.1.0     # Word (.docx)
-docxtpl>=0.16.7        # Plantillas Word
-pypdf>=4.2.0           # Leer PDF
-pdfplumber>=0.11.0     # Extraer texto de PDF
-requests>=2.31.0       # Llamadas HTTP
+openpyxl>=3.1.2
+reportlab>=4.0.0
+Pillow>=10.0.0
+python-docx>=1.1.0
+docxtpl>=0.16.7
+pypdf>=4.0.0
+pdfplumber>=0.10.0
+requests>=2.31.0
 
 # ── Testing ───────────────────────────────────────────────────────────────────
-pytest==8.2.2
-pytest-flask==1.3.0
+pytest>=8.0.0
+pytest-flask>=1.3.0
