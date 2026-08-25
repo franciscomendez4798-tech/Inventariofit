@@ -55,15 +55,20 @@ class ProductionConfig(Config):
     DEBUG = False
 
     # ── Base de datos ──────────────────────────────────────────────────────
-    # Prioridad: DATABASE_URL > SQLite en /data (Render Disk) > SQLite local
     _raw_db_url = os.environ.get('DATABASE_URL')
     if _raw_db_url:
         SQLALCHEMY_DATABASE_URI = _parse_database_url(_raw_db_url)
     else:
-        # Fallback: SQLite en directorio /data si existe (Render Disk mount)
-        # o en instance/ si no hay DB externa configurada.
-        _data_dir = '/data' if os.path.isdir('/data') else 'instance'
-        SQLALCHEMY_DATABASE_URI = f'sqlite:///{_data_dir}/inventario_prod.db'
+        # Ruta absoluta del directorio del proyecto (donde está config.py)
+        _base_dir = os.path.abspath(os.path.dirname(__file__))
+        # Usar /data si existe (Render Disk), si no usar instance/ del proyecto
+        if os.path.isdir('/data'):
+            _db_path = '/data/inventario_prod.db'
+        else:
+            _instance_dir = os.path.join(_base_dir, 'instance')
+            os.makedirs(_instance_dir, exist_ok=True)   # Crea la carpeta si no existe
+            _db_path = os.path.join(_instance_dir, 'inventario_prod.db')
+        SQLALCHEMY_DATABASE_URI = f'sqlite:///{_db_path}'
 
     # ── Pool de conexiones (PostgreSQL) ───────────────────────────────────
     # Solo aplica si se usa PostgreSQL; SQLite las ignora.
