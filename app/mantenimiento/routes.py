@@ -623,9 +623,16 @@ def herramienta_form(id=None):
         if not id:
             herramienta.cantidad_disponible = cantidad_total if nuevo_estado != 'extraviado' else 0
             db.session.add(herramienta)
-        db.session.commit()
-        flash(f'Herramienta "{herramienta.nombre}" guardada.', 'success')
-        return redirect(url_for('mantenimiento.herramientas'))
+        try:
+            db.session.commit()
+            flash(f'Herramienta "{herramienta.nombre}" guardada.', 'success')
+            return redirect(url_for('mantenimiento.herramientas'))
+        except Exception as e:
+            db.session.rollback()
+            if 'UNIQUE' in str(e).upper():
+                flash(f'El código "{herramienta.codigo}" ya está asignado a otra herramienta.', 'danger')
+            else:
+                flash(f'Error al guardar: {e}', 'danger')
     return render_template('mantenimiento/herramienta_form.html', herramienta=herramienta)
 
 
