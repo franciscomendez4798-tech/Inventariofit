@@ -937,7 +937,7 @@ def descargar_orden_admin(orden_id):
     """Genera y descarga el PDF de la orden de servicio al vuelo."""
     from flask import send_file
     from ..models import OrdenServicio
-    from ..utils.formatos import generar_pdf_orden
+    from ..utils.orden_servicio_pdf import generar_pdf_orden
     orden = OrdenServicio.query.get_or_404(orden_id)
     if orden.estado != 'entregada':
         flash('El PDF sólo está disponible para órdenes entregadas.', 'warning')
