@@ -6,6 +6,7 @@
 <!-- FullCalendar 6 -->
 <link  href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.css" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@fullcalendar/bootstrap5@6.1.11/index.global.min.js"></script>
 <style>
   .fc-event { cursor: pointer; font-size: .82rem; }
   .legend-dot { width:14px; height:14px; border-radius:50%; display:inline-block; }
@@ -119,6 +120,7 @@ document.addEventListener('DOMContentLoaded', function () {
   const calEl = document.getElementById('calendario');
   const cal = new FullCalendar.Calendar(calEl, {
     locale: 'es',
+    themeSystem: 'bootstrap5',
     initialView: 'dayGridMonth',
     headerToolbar: {
       left:   'prev,next today',

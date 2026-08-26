@@ -99,7 +99,7 @@
     <!-- AUDITORIO FIT (solo admin) -->
     <div class="nav-section-label mt-4">AUDITORIO FIT</div>
     <a href="{{ url_for('admin.auditorio') }}"
-       class="nav-link {% if 'auditorio' in request.endpoint %}active{% endif %}">
+       class="nav-link {% if 'auditorio' in request.endpoint and 'historial' not in request.endpoint %}active{% endif %}">
       <i class="bi bi-camera-video"></i> Reservas Auditorio
     </a>
     <a href="{{ url_for('admin.auditorio_historial') }}"
