@@ -115,10 +115,10 @@ class Proveedor(db.Model):
     cotizaciones = db.relationship('Cotizacion',  back_populates='proveedor')
 
 
-# Junction table for Trabajador ↔ Area (each area belongs to at most one worker)
+# Junction table for Trabajador ↔ Area (many-to-many)
 trabajador_areas = db.Table(
     'Trabajador_Areas',
-    db.Column('id_trabajador', db.Integer, db.ForeignKey('Trabajadores.id', ondelete='CASCADE'), nullable=False),
+    db.Column('id_trabajador', db.Integer, db.ForeignKey('Trabajadores.id', ondelete='CASCADE'), primary_key=True),
     db.Column('id_area',       db.Integer, db.ForeignKey('Areas.id',        ondelete='CASCADE'), primary_key=True),
 )
 
