@@ -522,6 +522,7 @@ def proveedor_form(prov_id=None):
 def departamentos():
     """Lista todos los departamentos con su encargado y número de pedidos."""
     deptos = (Departamento.query
+              .filter_by(activo=True)
               .order_by(Departamento.nombre)
               .all())
 
@@ -742,6 +743,54 @@ def departamento_eliminar(depto_id):
     flash(f'Departamento "{depto.nombre}" desactivado.', 'info')
     return redirect(url_for('admin.departamentos'))
 
+
+@admin_bp.route('/usuarios/exportar')
+@solo_admin
+def exportar_usuarios_excel():
+    """Genera un archivo Excel con todas las cuentas de usuario."""
+    from io import BytesIO
+    import openpyxl
+    from openpyxl.styles import Font
+    from flask import send_file
+    
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "Cuentas de Usuarios"
+    
+    headers = ["ID", "Nombre", "Email", "Rol", "Departamento", "Estado", "Fecha Creación"]
+    ws.append(headers)
+    
+    for cell in ws[1]:
+        cell.font = Font(bold=True)
+        
+    usuarios = Usuario.query.order_by(Usuario.id).all()
+    for u in usuarios:
+        depto = u.departamento.nombre if u.departamento else "Sin Departamento"
+        estado = "Activo" if u.activo else "Inactivo"
+        fecha = u.creado_en.strftime("%Y-%m-%d %H:%M") if u.creado_en else ""
+        ws.append([u.id, u.nombre_completo, u.email, u.rol, depto, estado, fecha])
+        
+    for col in ws.columns:
+        max_length = 0
+        column = col[0].column_letter
+        for cell in col:
+            try:
+                if len(str(cell.value)) > max_length:
+                    max_length = len(str(cell.value))
+            except:
+                pass
+        ws.column_dimensions[column].width = max_length + 2
+        
+    buf = BytesIO()
+    wb.save(buf)
+    buf.seek(0)
+    
+    return send_file(
+        buf, 
+        as_attachment=True, 
+        download_name="Cuentas_Usuarios.xlsx", 
+        mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # REQUISICIONES — Panel del admin (Salida de Almacén)

@@ -5,6 +5,9 @@
 {% block breadcrumb %}<strong>Departamentos</strong> — Gestión{% endblock %}
 
 {% block topbar_actions %}
+<a href="{{ url_for('admin.exportar_usuarios_excel') }}" class="btn btn-sm btn-outline-success me-2">
+  <i class="bi bi-file-earmark-excel me-1"></i>Exportar Cuentas
+</a>
 <a href="{{ url_for('admin.departamento_form') }}" class="btn btn-sm btn-primary">
   <i class="bi bi-plus-lg me-1"></i>Nuevo departamento
 </a>
