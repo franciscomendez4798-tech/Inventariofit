@@ -17,10 +17,7 @@ warnings.filterwarnings('ignore')
 
 from app import create_app
 from app.extensions import db
-from app.models import (
-    Usuario, Departamento, Categoria, Area, Trabajador,
-    Permisos_Visibilidad  # tabla de asociación — se accede via relación
-)
+from app.models import Usuario, Departamento, Categoria, Area, Trabajador
 
 app = create_app('production')
 
