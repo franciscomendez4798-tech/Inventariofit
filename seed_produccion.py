@@ -97,16 +97,22 @@ with app.app_context():
     ]
     deptos = {}
     for nombre, codigo, cat_names in deptos_data:
-        obj = Departamento.query.filter_by(codigo=codigo).first()
+        obj = Departamento.query.filter_by(nombre=nombre).first()
+        if not obj:
+            obj = Departamento.query.filter_by(codigo=codigo).first()
+
         if not obj:
             obj = Departamento(nombre=nombre, codigo=codigo)
-            for c_nombre in cat_names:
-                if c_nombre in cats:
-                    obj.categorias.append(cats[c_nombre])
             db.session.add(obj)
             ok(f'Depto: {codigo} — {nombre}')
         else:
-            skip(f'Depto: {codigo}')
+            obj.codigo = codigo # Actualizar código por si cambió (ej. de DIR-GEN a DIR)
+            skip(f'Depto actualizado: {codigo}')
+
+        for c_nombre in cat_names:
+            if c_nombre in cats and cats[c_nombre] not in obj.categorias:
+                obj.categorias.append(cats[c_nombre])
+                
         deptos[codigo] = obj
     db.session.commit()
 
