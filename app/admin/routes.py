@@ -1040,20 +1040,53 @@ def auditorio_nueva():
         if tipo == 'externo' and not correo:
             errores.append('El correo es requerido para usuarios externos.')
 
+        es_recurrente = request.form.get('es_recurrente') == '1'
+        dias_semana_str = request.form.getlist('dias_semana')
+        dias_semana = [int(d) for d in dias_semana_str if d.isdigit()]
+        fecha_fin_rep_str = request.form.get('fecha_fin_repeticion')
+        
+        fechas_a_reservar = []
         if not errores:
-            # Verificar traslape
-            traslape = ReservaAuditorio.query.filter(
-                ReservaAuditorio.estado.in_(['reservado', 'en_uso']),
-                ReservaAuditorio.fecha_inicio < fecha_fin,
-                ReservaAuditorio.fecha_fin   > fecha_inicio,
-            ).first()
-            if traslape:
-                errores.append(
-                    f'El horario se traslapa con la reserva '
-                    f'"{traslape.nombre_evento}" '
-                    f'({traslape.fecha_inicio.strftime("%d/%m %H:%M")} – '
-                    f'{traslape.fecha_fin.strftime("%H:%M")}).'
-                )
+            if es_recurrente:
+                if not dias_semana:
+                    errores.append('Selecciona al menos un día de la semana para repetir.')
+                if not fecha_fin_rep_str:
+                    errores.append('La fecha límite de repetición es requerida.')
+                else:
+                    try:
+                        fecha_limite = datetime.strptime(fecha_fin_rep_str, '%Y-%m-%d').date()
+                        if fecha_limite < fecha_inicio.date():
+                            errores.append('La fecha límite debe ser igual o posterior al inicio.')
+                        else:
+                            from datetime import timedelta
+                            current_date = fecha_inicio.date()
+                            while current_date <= fecha_limite:
+                                if current_date.weekday() in dias_semana:
+                                    dt_inicio = datetime.combine(current_date, fecha_inicio.time())
+                                    dt_fin    = datetime.combine(current_date, fecha_fin.time())
+                                    fechas_a_reservar.append((dt_inicio, dt_fin))
+                                current_date += timedelta(days=1)
+                            if not fechas_a_reservar:
+                                errores.append('No hay días que coincidan en el rango seleccionado.')
+                    except ValueError:
+                        errores.append('Formato de fecha límite inválido.')
+            else:
+                fechas_a_reservar.append((fecha_inicio, fecha_fin))
+
+        if not errores:
+            for f_inicio, f_fin in fechas_a_reservar:
+                traslape = ReservaAuditorio.query.filter(
+                    ReservaAuditorio.estado.in_(['reservado', 'en_uso']),
+                    ReservaAuditorio.fecha_inicio < f_fin,
+                    ReservaAuditorio.fecha_fin   > f_inicio,
+                ).first()
+                if traslape:
+                    errores.append(
+                        f'Traslape detectado el {f_inicio.strftime("%d/%m")} '
+                        f'con "{traslape.nombre_evento}" '
+                        f'({traslape.fecha_inicio.strftime("%H:%M")}–{traslape.fecha_fin.strftime("%H:%M")}).'
+                    )
+                    break
 
         if errores:
             for e in errores:
@@ -1061,25 +1094,29 @@ def auditorio_nueva():
             return render_template('admin/auditorio_form.html',
                                    accion='nueva', form=request.form)
 
-        reserva = ReservaAuditorio(
-            tipo_usuario    = tipo,
-            nombre          = nombre,
-            matricula       = matricula or None,
-            departamento    = departamento,
-            telefono        = telefono or None,
-            correo          = correo or None,
-            nombre_evento   = nombre_evento,
-            descripcion     = descripcion or None,
-            fecha_inicio    = fecha_inicio,
-            fecha_fin       = fecha_fin,
-            notas           = notas or None,
-            registrado_por  = current_user.id,
-        )
-        db.session.add(reserva)
+        for f_inicio, f_fin in fechas_a_reservar:
+            reserva = ReservaAuditorio(
+                tipo_usuario    = tipo,
+                nombre          = nombre,
+                matricula       = matricula or None,
+                departamento    = departamento,
+                telefono        = telefono or None,
+                correo          = correo or None,
+                nombre_evento   = nombre_evento,
+                descripcion     = descripcion or None,
+                fecha_inicio    = f_inicio,
+                fecha_fin       = f_fin,
+                notas           = notas or None,
+                registrado_por  = current_user.id,
+            )
+            db.session.add(reserva)
+            
         db.session.commit()
-        flash(f'Reserva "{nombre_evento}" registrada correctamente.', 'success')
+        if es_recurrente:
+            flash(f'Reserva recurrente "{nombre_evento}" registrada ({len(fechas_a_reservar)} sesiones).', 'success')
+        else:
+            flash(f'Reserva "{nombre_evento}" registrada correctamente.', 'success')
         return redirect(url_for('admin.auditorio'))
-
     return render_template('admin/auditorio_form.html', accion='nueva', form={})
 
 
