@@ -1,0 +1,293 @@
+{% extends "shared/base.html" %}
+{% block title %}Supervisar Mantenimiento{% endblock %}
+
+{% block head_extra %}
+<!-- Adaptación Orion: Cargamos Tailwind CSS y Lucide Icons dinámicamente -->
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  tailwind.config = {
+    corePlugins: {
+      preflight: false, // Fundamental para no romper el sidebar actual de Bootstrap
+    }
+  }
+</script>
+<script src="https://unpkg.com/lucide@latest"></script>
+<style>
+  /* Ajustes Orion-Style para evitar conflictos con Bootstrap */
+  .orion-panel button { background: transparent; border: none; padding: 0; cursor: pointer; }
+  .orion-panel table { border-collapse: collapse; margin-bottom: 0; }
+  .orion-panel { font-family: 'Inter', sans-serif; }
+  .tab-content-orion { display: none; }
+  .tab-content-orion.active { display: block; }
+  @keyframes fadeInOrion {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .animate-fade-orion {
+    animation: fadeInOrion 0.3s ease-out forwards;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="orion-panel p-6 w-full max-w-7xl mx-auto space-y-6 bg-slate-50 min-h-[80vh] rounded-xl shadow-inner text-slate-800">
+  
+  <!-- Header -->
+  <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
+    <div>
+      <h1 class="text-2xl font-bold tracking-tight m-0 text-slate-800">Supervisión de Mantenimiento</h1>
+      <p class="text-sm text-slate-500 mt-1 mb-0">Vista completa de órdenes, préstamos y actividad del departamento.</p>
+    </div>
+    <a href="{{ url_for('admin.reportes') }}" class="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-lg shadow-sm text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors no-underline">
+      <i data-lucide="bar-chart-2" class="w-4 h-4"></i>
+      Reportes
+    </a>
+  </div>
+
+  <!-- Stats Cards -->
+  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+    <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200 flex items-center gap-4 hover:-translate-y-1 transition-transform duration-200">
+      <div class="p-3 rounded-lg bg-orange-100 text-orange-600">
+        <i data-lucide="clipboard-x" class="w-6 h-6"></i>
+      </div>
+      <div>
+        <p class="text-2xl font-bold text-slate-800 m-0">{{ stats['om_pendientes'] }}</p>
+        <p class="text-sm font-medium text-slate-500 m-0">Órdenes pendientes</p>
+      </div>
+    </div>
+    
+    <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200 flex items-center gap-4 hover:-translate-y-1 transition-transform duration-200">
+      <div class="p-3 rounded-lg bg-indigo-100 text-indigo-600">
+        <i data-lucide="clipboard-check" class="w-6 h-6"></i>
+      </div>
+      <div>
+        <p class="text-2xl font-bold text-slate-800 m-0">{{ stats['om_en_progreso'] }}</p>
+        <p class="text-sm font-medium text-slate-500 m-0">En progreso</p>
+      </div>
+    </div>
+
+    <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200 flex items-center gap-4 hover:-translate-y-1 transition-transform duration-200">
+      <div class="p-3 rounded-lg bg-emerald-100 text-emerald-600">
+        <i data-lucide="wrench" class="w-6 h-6"></i>
+      </div>
+      <div>
+        <p class="text-2xl font-bold text-slate-800 m-0">{{ stats['prestamos_activos'] }}</p>
+        <p class="text-sm font-medium text-slate-500 m-0">Préstamos activos</p>
+      </div>
+    </div>
+
+    <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200 flex items-center gap-4 hover:-translate-y-1 transition-transform duration-200">
+      <div class="p-3 rounded-lg bg-red-100 text-red-600">
+        <i data-lucide="alert-triangle" class="w-6 h-6"></i>
+      </div>
+      <div>
+        <p class="text-2xl font-bold text-slate-800 m-0">{{ stats['prestamos_vencidos'] }}</p>
+        <p class="text-sm font-medium text-slate-500 m-0">Préstamos vencidos</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tabs -->
+  <div class="border-b border-slate-200 mb-6">
+    <nav class="-mb-px flex space-x-8">
+      <button onclick="switchTab('ordenes')" id="btn-ordenes" class="flex items-center gap-2 py-4 px-1 border-b-2 font-medium text-sm transition-colors border-indigo-500 text-indigo-600 bg-transparent">
+        <i data-lucide="clipboard-check" class="w-4 h-4"></i>
+        Órdenes
+      </button>
+      <button onclick="switchTab('prestamos')" id="btn-prestamos" class="flex items-center gap-2 py-4 px-1 border-b-2 font-medium text-sm transition-colors border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300 bg-transparent">
+        <i data-lucide="wrench" class="w-4 h-4"></i>
+        Préstamos
+      </button>
+    </nav>
+  </div>
+
+  <!-- Tab Content -->
+  <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+    
+    <!-- Tab Órdenes -->
+    <div id="tab-ordenes" class="tab-content-orion active flex flex-col animate-fade-orion">
+      <div class="p-4 border-b border-slate-200 flex justify-between items-center bg-slate-50/50">
+        <h2 class="text-base font-semibold text-slate-800 m-0">Órdenes de Mantenimiento</h2>
+        <div class="relative w-48">
+          <select id="filtroEstadoOM" class="appearance-none bg-white border border-slate-300 text-slate-700 text-sm rounded-lg focus:ring-indigo-500 focus:border-indigo-500 block w-full pl-3 pr-10 py-2 cursor-pointer shadow-sm outline-none m-0">
+            <option value="">Todos los estados</option>
+            {% for est in estados_om %}
+            <option value="{{ est }}">{{ est.replace('_',' ').capitalize() }}</option>
+            {% endfor %}
+          </select>
+          <i data-lucide="chevron-down" class="absolute right-3 top-2.5 w-4 h-4 text-slate-400 pointer-events-none"></i>
+        </div>
+      </div>
+      <div class="overflow-x-auto">
+        <table class="w-full text-left text-sm text-slate-600 m-0" id="tablaOrdenes">
+          <thead class="bg-slate-50 text-slate-500 border-b border-slate-200 text-xs uppercase tracking-wider">
+            <tr>
+              <th class="px-6 py-4 font-medium">Folio</th>
+              <th class="px-6 py-4 font-medium">Departamento</th>
+              <th class="px-6 py-4 font-medium">Título</th>
+              <th class="px-6 py-4 font-medium">Prioridad</th>
+              <th class="px-6 py-4 font-medium">Técnico</th>
+              <th class="px-6 py-4 font-medium">Estado</th>
+              <th class="px-6 py-4 font-medium text-center">Días</th>
+              <th class="px-6 py-4 font-medium text-center">Calificación</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-slate-200">
+            {% for om in ordenes %}
+            <tr data-estado="{{ om.estado }}" class="hover:bg-slate-50/50 transition-colors">
+              <td class="px-6 py-4 font-mono font-medium text-slate-900">{{ om.folio }}</td>
+              <td class="px-6 py-4">{{ om.departamento.codigo if om.departamento else '—' }}</td>
+              <td class="px-6 py-4 max-w-xs truncate" title="{{ om.titulo }}">{{ om.titulo[:45] }}{% if om.titulo|length > 45 %}…{% endif %}</td>
+              <td class="px-6 py-4">
+                {% if om.prioridad == 'Urgente' or om.prioridad == 'Alta' %}
+                  <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border bg-red-100 text-red-800 border-red-200">{{ om.prioridad }}</span>
+                {% elif om.prioridad == 'Media' %}
+                  <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border bg-blue-100 text-blue-800 border-blue-200">{{ om.prioridad }}</span>
+                {% else %}
+                  <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border bg-slate-100 text-slate-800 border-slate-200">{{ om.prioridad }}</span>
+                {% endif %}
+              </td>
+              <td class="px-6 py-4 text-slate-500">
+                {% if om.tecnico_asignado %}
+                  {{ om.tecnico_asignado.nombre or om.tecnico_asignado.username }}
+                {% else %}
+                  <span class="italic">Sin asignar</span>
+                {% endif %}
+              </td>
+              <td class="px-6 py-4">
+                {% if om.estado == 'pendiente' %}
+                  <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">Pendiente</span>
+                {% elif om.estado == 'en_progreso' %}
+                  <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800">En progreso</span>
+                {% elif om.estado == 'cerrada' %}
+                  <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800">Cerrada</span>
+                {% else %}
+                  <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-600">{{ om.estado }}</span>
+                {% endif %}
+              </td>
+              <td class="px-6 py-4 text-center">
+                <span class="{% if om.dias_abierta > 7 and om.estado not in ('cerrada','cancelada') %}text-red-600 font-bold{% endif %}">
+                  {{ om.dias_abierta }}d
+                </span>
+              </td>
+              <td class="px-6 py-4 text-center">
+                {% if om.calificacion %}
+                  <div class="flex items-center justify-center text-yellow-400">
+                    {% for i in range(1,6) %}
+                      <i data-lucide="star" class="w-4 h-4 {% if i <= om.calificacion %}fill-current{% else %}text-slate-200{% endif %}"></i>
+                    {% endfor %}
+                  </div>
+                {% else %}
+                  <span class="text-slate-300">—</span>
+                {% endif %}
+              </td>
+            </tr>
+            {% else %}
+            <tr>
+              <td colspan="8" class="px-6 py-12 text-center text-slate-500 border-b-0">
+                Sin órdenes de mantenimiento registradas.
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Tab Préstamos -->
+    <div id="tab-prestamos" class="tab-content-orion flex flex-col animate-fade-orion">
+      <div class="p-4 border-b border-slate-200 bg-slate-50/50">
+        <h2 class="text-base font-semibold text-slate-800 m-0">Préstamos de Herramienta / Equipo</h2>
+      </div>
+      <div class="overflow-x-auto">
+        <table class="w-full text-left text-sm text-slate-600 m-0">
+          <thead class="bg-slate-50 text-slate-500 border-b border-slate-200 text-xs uppercase tracking-wider">
+            <tr>
+              <th class="px-6 py-4 font-medium">Material</th>
+              <th class="px-6 py-4 font-medium">Cantidad</th>
+              <th class="px-6 py-4 font-medium">Receptor</th>
+              <th class="px-6 py-4 font-medium">Departamento</th>
+              <th class="px-6 py-4 font-medium">Registrado por</th>
+              <th class="px-6 py-4 font-medium">Préstamo</th>
+              <th class="px-6 py-4 font-medium">Vence</th>
+              <th class="px-6 py-4 font-medium">Estado</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-slate-200">
+            {% for p in prestamos %}
+            <tr class="hover:bg-slate-50/50 transition-colors {% if p.esta_vencido %}bg-red-50/30{% endif %}">
+              <td class="px-6 py-4 font-medium text-slate-900">{{ p.material.nombre }}</td>
+              <td class="px-6 py-4">{{ p.cantidad }} {{ p.material.unidad_medida }}</td>
+              <td class="px-6 py-4">{{ p.nombre_receptor }}</td>
+              <td class="px-6 py-4 text-slate-500">{{ p.departamento.codigo if p.departamento else '—' }}</td>
+              <td class="px-6 py-4 text-slate-500">{{ p.registrado_por.username if p.registrado_por else '—' }}</td>
+              <td class="px-6 py-4 text-slate-500">{{ p.fecha_prestamo | fecha_corta }}</td>
+              <td class="px-6 py-4">
+                <span class="{% if p.esta_vencido %}text-red-600 font-semibold flex items-center gap-1{% else %}text-slate-500{% endif %}">
+                  {{ p.fecha_devolucion_esperada | fecha_corta if p.fecha_devolucion_esperada else '—' }}
+                  {% if p.esta_vencido %}<i data-lucide="alert-triangle" class="w-3 h-3"></i>{% endif %}
+                </span>
+              </td>
+              <td class="px-6 py-4">
+                {% if p.estado == 'vencido' or p.esta_vencido %}
+                  <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">Vencido</span>
+                {% elif p.estado == 'activo' %}
+                  <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800">Activo</span>
+                {% else %}
+                  <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-800">{{ p.estado }}</span>
+                {% endif %}
+              </td>
+            </tr>
+            {% else %}
+            <tr>
+              <td colspan="8" class="px-6 py-12 text-center text-slate-500 border-b-0">
+                Sin préstamos registrados.
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<!-- Inicializar iconos Lucide -->
+<script>
+  lucide.createIcons();
+
+  // Cambio de Pestañas (Tabs)
+  function switchTab(tabId) {
+    document.querySelectorAll('.tab-content-orion').forEach(el => el.classList.remove('active'));
+    document.getElementById('tab-' + tabId).classList.add('active');
+    
+    const btnOrdenes = document.getElementById('btn-ordenes');
+    const btnPrestamos = document.getElementById('btn-prestamos');
+    
+    if (tabId === 'ordenes') {
+      btnOrdenes.className = "flex items-center gap-2 py-4 px-1 border-b-2 font-medium text-sm transition-colors border-indigo-500 text-indigo-600 bg-transparent";
+      btnPrestamos.className = "flex items-center gap-2 py-4 px-1 border-b-2 font-medium text-sm transition-colors border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300 bg-transparent";
+    } else {
+      btnPrestamos.className = "flex items-center gap-2 py-4 px-1 border-b-2 font-medium text-sm transition-colors border-indigo-500 text-indigo-600 bg-transparent";
+      btnOrdenes.className = "flex items-center gap-2 py-4 px-1 border-b-2 font-medium text-sm transition-colors border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300 bg-transparent";
+    }
+  }
+
+  // Filtro de Órdenes
+  document.getElementById('filtroEstadoOM').addEventListener('change', function() {
+    const val = this.value;
+    document.querySelectorAll('#tablaOrdenes tbody tr').forEach(tr => {
+      if (tr.dataset.estado) {
+        if (!val || tr.dataset.estado === val) {
+          tr.style.display = '';
+        } else {
+          tr.style.display = 'none';
+        }
+      }
+    });
+  });
+</script>
+{% endblock %}
